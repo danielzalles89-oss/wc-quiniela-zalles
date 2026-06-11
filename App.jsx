@@ -17,109 +17,114 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ─── ALL MATCHES IN CHRONOLOGICAL ORDER ───────────────────────────────────────
+// ─── MATCHES WITH KICKOFF TIMES (UTC) ────────────────────────────────────────
+// All times in UTC. ET = UTC-4, CT = UTC-5, PT = UTC-7
 const GROUP_MATCHES = [
   // June 11
-  { id:"G1",  date:"Jun 11", home:"Mexico",       away:"South Africa",   group:"A" },
-  { id:"G2",  date:"Jun 11", home:"South Korea",  away:"Czechia",        group:"A" },
+  { id:"G1",  date:"Jun 11", kickoff:"2026-06-11T19:00:00Z", home:"Mexico",       away:"South Africa",   group:"A" },
+  { id:"G2",  date:"Jun 11", kickoff:"2026-06-12T02:00:00Z", home:"South Korea",  away:"Czechia",        group:"A" },
   // June 12
-  { id:"G3",  date:"Jun 12", home:"Canada",       away:"Bosnia & Herz.", group:"B" },
-  { id:"G4",  date:"Jun 12", home:"USA",          away:"Paraguay",       group:"D" },
+  { id:"G3",  date:"Jun 12", kickoff:"2026-06-12T19:00:00Z", home:"Canada",       away:"Bosnia & Herz.", group:"B" },
+  { id:"G4",  date:"Jun 12", kickoff:"2026-06-13T01:00:00Z", home:"USA",          away:"Paraguay",       group:"D" },
   // June 13
-  { id:"G5",  date:"Jun 13", home:"Qatar",        away:"Switzerland",    group:"B" },
-  { id:"G6",  date:"Jun 13", home:"Brazil",       away:"Morocco",        group:"C" },
-  { id:"G7",  date:"Jun 13", home:"Haiti",        away:"Scotland",       group:"C" },
-  { id:"G8",  date:"Jun 13", home:"Australia",    away:"Turkey",         group:"D" },
+  { id:"G5",  date:"Jun 13", kickoff:"2026-06-13T19:00:00Z", home:"Qatar",        away:"Switzerland",    group:"B" },
+  { id:"G6",  date:"Jun 13", kickoff:"2026-06-13T22:00:00Z", home:"Brazil",       away:"Morocco",        group:"C" },
+  { id:"G7",  date:"Jun 14", kickoff:"2026-06-14T01:00:00Z", home:"Haiti",        away:"Scotland",       group:"C" },
+  { id:"G8",  date:"Jun 13", kickoff:"2026-06-14T04:00:00Z", home:"Australia",    away:"Turkey",         group:"D" },
   // June 14
-  { id:"G9",  date:"Jun 14", home:"Germany",      away:"Curaçao",        group:"E" },
-  { id:"G10", date:"Jun 14", home:"Netherlands",  away:"Japan",          group:"F" },
-  { id:"G11", date:"Jun 14", home:"Ivory Coast",  away:"Ecuador",        group:"E" },
-  { id:"G12", date:"Jun 14", home:"Sweden",       away:"Tunisia",        group:"F" },
+  { id:"G9",  date:"Jun 14", kickoff:"2026-06-14T17:00:00Z", home:"Germany",      away:"Curaçao",        group:"E" },
+  { id:"G10", date:"Jun 14", kickoff:"2026-06-14T20:00:00Z", home:"Netherlands",  away:"Japan",          group:"F" },
+  { id:"G11", date:"Jun 14", kickoff:"2026-06-14T23:00:00Z", home:"Ivory Coast",  away:"Ecuador",        group:"E" },
+  { id:"G12", date:"Jun 15", kickoff:"2026-06-15T02:00:00Z", home:"Sweden",       away:"Tunisia",        group:"F" },
   // June 15
-  { id:"G13", date:"Jun 15", home:"Spain",        away:"Cape Verde",     group:"H" },
-  { id:"G14", date:"Jun 15", home:"Belgium",      away:"Egypt",          group:"G" },
-  { id:"G15", date:"Jun 15", home:"Saudi Arabia", away:"Uruguay",        group:"H" },
-  { id:"G16", date:"Jun 15", home:"Iran",         away:"New Zealand",    group:"G" },
+  { id:"G13", date:"Jun 15", kickoff:"2026-06-15T17:00:00Z", home:"Spain",        away:"Cape Verde",     group:"H" },
+  { id:"G14", date:"Jun 15", kickoff:"2026-06-15T20:00:00Z", home:"Belgium",      away:"Egypt",          group:"G" },
+  { id:"G15", date:"Jun 15", kickoff:"2026-06-15T22:00:00Z", home:"Saudi Arabia", away:"Uruguay",        group:"H" },
+  { id:"G16", date:"Jun 16", kickoff:"2026-06-16T01:00:00Z", home:"Iran",         away:"New Zealand",    group:"G" },
   // June 16
-  { id:"G17", date:"Jun 16", home:"France",       away:"Senegal",        group:"I" },
-  { id:"G18", date:"Jun 16", home:"Iraq",         away:"Norway",         group:"I" },
-  { id:"G19", date:"Jun 16", home:"Argentina",    away:"Algeria",        group:"J" },
-  { id:"G20", date:"Jun 16", home:"Austria",      away:"Jordan",         group:"J" },
+  { id:"G17", date:"Jun 16", kickoff:"2026-06-16T19:00:00Z", home:"France",       away:"Senegal",        group:"I" },
+  { id:"G18", date:"Jun 16", kickoff:"2026-06-16T22:00:00Z", home:"Iraq",         away:"Norway",         group:"I" },
+  { id:"G19", date:"Jun 17", kickoff:"2026-06-17T01:00:00Z", home:"Argentina",    away:"Algeria",        group:"J" },
+  { id:"G20", date:"Jun 17", kickoff:"2026-06-17T04:00:00Z", home:"Austria",      away:"Jordan",         group:"J" },
   // June 17
-  { id:"G21", date:"Jun 17", home:"Portugal",     away:"DR Congo",       group:"K" },
-  { id:"G22", date:"Jun 17", home:"Uzbekistan",   away:"Colombia",       group:"K" },
-  { id:"G23", date:"Jun 17", home:"England",      away:"Panama",         group:"L" },
-  { id:"G24", date:"Jun 17", home:"Ghana",        away:"Croatia",        group:"L" },
+  { id:"G21", date:"Jun 17", kickoff:"2026-06-17T17:00:00Z", home:"Portugal",     away:"DR Congo",       group:"K" },
+  { id:"G22", date:"Jun 17", kickoff:"2026-06-17T20:00:00Z", home:"Uzbekistan",   away:"Colombia",       group:"K" },
+  { id:"G23", date:"Jun 17", kickoff:"2026-06-17T22:00:00Z", home:"England",      away:"Panama",         group:"L" },
+  { id:"G24", date:"Jun 18", kickoff:"2026-06-18T01:00:00Z", home:"Ghana",        away:"Croatia",        group:"L" },
   // June 18
-  { id:"G25", date:"Jun 18", home:"Mexico",       away:"South Korea",    group:"A" },
-  { id:"G26", date:"Jun 18", home:"Czechia",      away:"South Africa",   group:"A" },
-  { id:"G27", date:"Jun 18", home:"Switzerland",  away:"Bosnia & Herz.", group:"B" },
-  { id:"G28", date:"Jun 18", home:"Canada",       away:"Qatar",          group:"B" },
+  { id:"G25", date:"Jun 18", kickoff:"2026-06-18T17:00:00Z", home:"Mexico",       away:"South Korea",    group:"A" },
+  { id:"G26", date:"Jun 18", kickoff:"2026-06-18T20:00:00Z", home:"Czechia",      away:"South Africa",   group:"A" },
+  { id:"G27", date:"Jun 18", kickoff:"2026-06-18T23:00:00Z", home:"Switzerland",  away:"Bosnia & Herz.", group:"B" },
+  { id:"G28", date:"Jun 19", kickoff:"2026-06-19T02:00:00Z", home:"Canada",       away:"Qatar",          group:"B" },
   // June 19
-  { id:"G29", date:"Jun 19", home:"USA",          away:"Australia",      group:"D" },
-  { id:"G30", date:"Jun 19", home:"Turkey",       away:"Paraguay",       group:"D" },
-  { id:"G31", date:"Jun 19", home:"Morocco",      away:"Haiti",          group:"C" },
-  { id:"G32", date:"Jun 19", home:"Brazil",       away:"Scotland",       group:"C" },
+  { id:"G29", date:"Jun 19", kickoff:"2026-06-19T17:00:00Z", home:"USA",          away:"Australia",      group:"D" },
+  { id:"G30", date:"Jun 19", kickoff:"2026-06-19T20:00:00Z", home:"Turkey",       away:"Paraguay",       group:"D" },
+  { id:"G31", date:"Jun 19", kickoff:"2026-06-19T23:00:00Z", home:"Morocco",      away:"Haiti",          group:"C" },
+  { id:"G32", date:"Jun 20", kickoff:"2026-06-20T02:00:00Z", home:"Brazil",       away:"Scotland",       group:"C" },
   // June 20
-  { id:"G33", date:"Jun 20", home:"Germany",      away:"Ivory Coast",    group:"E" },
-  { id:"G34", date:"Jun 20", home:"Ecuador",      away:"Curaçao",        group:"E" },
-  { id:"G35", date:"Jun 20", home:"Netherlands",  away:"Sweden",         group:"F" },
-  { id:"G36", date:"Jun 20", home:"Japan",        away:"Tunisia",        group:"F" },
+  { id:"G33", date:"Jun 20", kickoff:"2026-06-20T17:00:00Z", home:"Germany",      away:"Ivory Coast",    group:"E" },
+  { id:"G34", date:"Jun 20", kickoff:"2026-06-20T20:00:00Z", home:"Ecuador",      away:"Curaçao",        group:"E" },
+  { id:"G35", date:"Jun 20", kickoff:"2026-06-20T23:00:00Z", home:"Netherlands",  away:"Sweden",         group:"F" },
+  { id:"G36", date:"Jun 21", kickoff:"2026-06-21T02:00:00Z", home:"Japan",        away:"Tunisia",        group:"F" },
   // June 21
-  { id:"G37", date:"Jun 21", home:"Belgium",      away:"Iran",           group:"G" },
-  { id:"G38", date:"Jun 21", home:"New Zealand",  away:"Egypt",          group:"G" },
-  { id:"G39", date:"Jun 21", home:"Spain",        away:"Saudi Arabia",   group:"H" },
-  { id:"G40", date:"Jun 21", home:"Uruguay",      away:"Cape Verde",     group:"H" },
+  { id:"G37", date:"Jun 21", kickoff:"2026-06-21T17:00:00Z", home:"Belgium",      away:"Iran",           group:"G" },
+  { id:"G38", date:"Jun 21", kickoff:"2026-06-21T20:00:00Z", home:"New Zealand",  away:"Egypt",          group:"G" },
+  { id:"G39", date:"Jun 21", kickoff:"2026-06-21T23:00:00Z", home:"Spain",        away:"Saudi Arabia",   group:"H" },
+  { id:"G40", date:"Jun 22", kickoff:"2026-06-22T02:00:00Z", home:"Uruguay",      away:"Cape Verde",     group:"H" },
   // June 22
-  { id:"G41", date:"Jun 22", home:"Argentina",    away:"Austria",        group:"J" },
-  { id:"G42", date:"Jun 22", home:"Jordan",       away:"Algeria",        group:"J" },
-  { id:"G43", date:"Jun 22", home:"France",       away:"Iraq",           group:"I" },
-  { id:"G44", date:"Jun 22", home:"Norway",       away:"Senegal",        group:"I" },
+  { id:"G41", date:"Jun 22", kickoff:"2026-06-22T17:00:00Z", home:"Argentina",    away:"Austria",        group:"J" },
+  { id:"G42", date:"Jun 22", kickoff:"2026-06-22T20:00:00Z", home:"Jordan",       away:"Algeria",        group:"J" },
+  { id:"G43", date:"Jun 22", kickoff:"2026-06-22T23:00:00Z", home:"France",       away:"Iraq",           group:"I" },
+  { id:"G44", date:"Jun 23", kickoff:"2026-06-23T02:00:00Z", home:"Norway",       away:"Senegal",        group:"I" },
   // June 23
-  { id:"G45", date:"Jun 23", home:"Portugal",     away:"Uzbekistan",     group:"K" },
-  { id:"G46", date:"Jun 23", home:"Colombia",     away:"DR Congo",       group:"K" },
-  { id:"G47", date:"Jun 23", home:"England",      away:"Ghana",          group:"L" },
-  { id:"G48", date:"Jun 23", home:"Croatia",      away:"Panama",         group:"L" },
+  { id:"G45", date:"Jun 23", kickoff:"2026-06-23T17:00:00Z", home:"Portugal",     away:"Uzbekistan",     group:"K" },
+  { id:"G46", date:"Jun 23", kickoff:"2026-06-23T20:00:00Z", home:"Colombia",     away:"DR Congo",       group:"K" },
+  { id:"G47", date:"Jun 23", kickoff:"2026-06-23T23:00:00Z", home:"England",      away:"Ghana",          group:"L" },
+  { id:"G48", date:"Jun 24", kickoff:"2026-06-24T02:00:00Z", home:"Croatia",      away:"Panama",         group:"L" },
   // June 24
-  { id:"G49", date:"Jun 24", home:"South Korea",  away:"South Africa",   group:"A" },
-  { id:"G50", date:"Jun 24", home:"Mexico",       away:"Czechia",        group:"A" },
-  { id:"G51", date:"Jun 24", home:"Bosnia & Herz.",away:"Qatar",         group:"B" },
-  { id:"G52", date:"Jun 24", home:"Switzerland",  away:"Canada",         group:"B" },
+  { id:"G49", date:"Jun 24", kickoff:"2026-06-24T17:00:00Z", home:"South Korea",  away:"South Africa",   group:"A" },
+  { id:"G50", date:"Jun 24", kickoff:"2026-06-24T20:00:00Z", home:"Mexico",       away:"Czechia",        group:"A" },
+  { id:"G51", date:"Jun 24", kickoff:"2026-06-24T23:00:00Z", home:"Bosnia & Herz.",away:"Qatar",         group:"B" },
+  { id:"G52", date:"Jun 25", kickoff:"2026-06-25T02:00:00Z", home:"Switzerland",  away:"Canada",         group:"B" },
   // June 25
-  { id:"G53", date:"Jun 25", home:"Scotland",     away:"Morocco",        group:"C" },
-  { id:"G54", date:"Jun 25", home:"Haiti",        away:"Brazil",         group:"C" },
-  { id:"G55", date:"Jun 25", home:"Paraguay",     away:"Australia",      group:"D" },
-  { id:"G56", date:"Jun 25", home:"Turkey",       away:"USA",            group:"D" },
+  { id:"G53", date:"Jun 25", kickoff:"2026-06-25T17:00:00Z", home:"Scotland",     away:"Morocco",        group:"C" },
+  { id:"G54", date:"Jun 25", kickoff:"2026-06-25T20:00:00Z", home:"Haiti",        away:"Brazil",         group:"C" },
+  { id:"G55", date:"Jun 25", kickoff:"2026-06-25T23:00:00Z", home:"Paraguay",     away:"Australia",      group:"D" },
+  { id:"G56", date:"Jun 26", kickoff:"2026-06-26T02:00:00Z", home:"Turkey",       away:"USA",            group:"D" },
   // June 26
-  { id:"G57", date:"Jun 26", home:"Curaçao",      away:"Germany",        group:"E" },
-  { id:"G58", date:"Jun 26", home:"Ecuador",      away:"Ivory Coast",    group:"E" },
-  { id:"G59", date:"Jun 26", home:"Tunisia",      away:"Netherlands",    group:"F" },
-  { id:"G60", date:"Jun 26", home:"Sweden",       away:"Japan",          group:"F" },
-  { id:"G61", date:"Jun 26", home:"Norway",       away:"France",         group:"I" },
-  { id:"G62", date:"Jun 26", home:"Senegal",      away:"Iraq",           group:"I" },
-  { id:"G63", date:"Jun 26", home:"Cape Verde",   away:"Saudi Arabia",   group:"H" },
-  { id:"G64", date:"Jun 26", home:"Uruguay",      away:"Spain",          group:"H" },
-  { id:"G65", date:"Jun 26", home:"Egypt",        away:"Iran",           group:"G" },
-  { id:"G66", date:"Jun 26", home:"New Zealand",  away:"Belgium",        group:"G" },
+  { id:"G57", date:"Jun 26", kickoff:"2026-06-26T17:00:00Z", home:"Curaçao",      away:"Germany",        group:"E" },
+  { id:"G58", date:"Jun 26", kickoff:"2026-06-26T20:00:00Z", home:"Ecuador",      away:"Ivory Coast",    group:"E" },
+  { id:"G59", date:"Jun 26", kickoff:"2026-06-26T20:00:00Z", home:"Tunisia",      away:"Netherlands",    group:"F" },
+  { id:"G60", date:"Jun 26", kickoff:"2026-06-26T23:00:00Z", home:"Sweden",       away:"Japan",          group:"F" },
+  { id:"G61", date:"Jun 26", kickoff:"2026-06-26T19:00:00Z", home:"Norway",       away:"France",         group:"I" },
+  { id:"G62", date:"Jun 26", kickoff:"2026-06-26T19:00:00Z", home:"Senegal",      away:"Iraq",           group:"I" },
+  { id:"G63", date:"Jun 26", kickoff:"2026-06-26T23:00:00Z", home:"Cape Verde",   away:"Saudi Arabia",   group:"H" },
+  { id:"G64", date:"Jun 26", kickoff:"2026-06-26T23:00:00Z", home:"Uruguay",      away:"Spain",          group:"H" },
+  { id:"G65", date:"Jun 26", kickoff:"2026-06-27T02:00:00Z", home:"Egypt",        away:"Iran",           group:"G" },
+  { id:"G66", date:"Jun 26", kickoff:"2026-06-27T02:00:00Z", home:"New Zealand",  away:"Belgium",        group:"G" },
   // June 27
-  { id:"G67", date:"Jun 27", home:"Panama",       away:"England",        group:"L" },
-  { id:"G68", date:"Jun 27", home:"Croatia",      away:"Ghana",          group:"L" },
-  { id:"G69", date:"Jun 27", home:"Colombia",     away:"Portugal",       group:"K" },
-  { id:"G70", date:"Jun 27", home:"DR Congo",     away:"Uzbekistan",     group:"K" },
-  { id:"G71", date:"Jun 27", home:"Algeria",      away:"Austria",        group:"J" },
-  { id:"G72", date:"Jun 27", home:"Jordan",       away:"Argentina",      group:"J" },
+  { id:"G67", date:"Jun 27", kickoff:"2026-06-27T21:00:00Z", home:"Panama",       away:"England",        group:"L" },
+  { id:"G68", date:"Jun 27", kickoff:"2026-06-27T21:00:00Z", home:"Croatia",      away:"Ghana",          group:"L" },
+  { id:"G69", date:"Jun 27", kickoff:"2026-06-27T23:30:00Z", home:"Colombia",     away:"Portugal",       group:"K" },
+  { id:"G70", date:"Jun 27", kickoff:"2026-06-27T23:30:00Z", home:"DR Congo",     away:"Uzbekistan",     group:"K" },
+  { id:"G71", date:"Jun 28", kickoff:"2026-06-28T02:00:00Z", home:"Algeria",      away:"Austria",        group:"J" },
+  { id:"G72", date:"Jun 28", kickoff:"2026-06-28T02:00:00Z", home:"Jordan",       away:"Argentina",      group:"J" },
 ];
 
 const KNOCKOUT_SLOTS = [
-  ...Array.from({length:16},(_,i)=>({ id:`R32-${String(i+1).padStart(2,"0")}`, stage:"r32", home:"TBD", away:"TBD", date:"Jun 28 – Jul 3" })),
-  ...Array.from({length:8},(_,i)=>({ id:`R16-${String(i+1).padStart(2,"0")}`, stage:"r16", home:"TBD", away:"TBD", date:"Jul 4 – 7" })),
-  ...Array.from({length:4},(_,i)=>({ id:`QF-${String(i+1).padStart(2,"0")}`, stage:"qf", home:"TBD", away:"TBD", date:"Jul 9 – 11" })),
-  ...Array.from({length:2},(_,i)=>({ id:`SF-${String(i+1).padStart(2,"0")}`, stage:"sf", home:"TBD", away:"TBD", date:"Jul 14 – 15" })),
-  { id:"3RD", stage:"3rd", home:"TBD", away:"TBD", date:"Jul 18" },
-  { id:"FINAL", stage:"final", home:"TBD", away:"TBD", date:"Jul 19" },
+  ...Array.from({length:16},(_,i)=>({ id:`R32-${String(i+1).padStart(2,"0")}`, stage:"r32", home:"TBD", away:"TBD", date:"Jun 28 – Jul 3", kickoff:"2026-06-28T19:00:00Z" })),
+  ...Array.from({length:8},(_,i)=>({ id:`R16-${String(i+1).padStart(2,"0")}`, stage:"r16", home:"TBD", away:"TBD", date:"Jul 4 – 7", kickoff:"2026-07-04T19:00:00Z" })),
+  ...Array.from({length:4},(_,i)=>({ id:`QF-${String(i+1).padStart(2,"0")}`, stage:"qf", home:"TBD", away:"TBD", date:"Jul 9 – 11", kickoff:"2026-07-09T19:00:00Z" })),
+  ...Array.from({length:2},(_,i)=>({ id:`SF-${String(i+1).padStart(2,"0")}`, stage:"sf", home:"TBD", away:"TBD", date:"Jul 14 – 15", kickoff:"2026-07-14T19:00:00Z" })),
+  { id:"3RD", stage:"3rd", home:"TBD", away:"TBD", date:"Jul 18", kickoff:"2026-07-18T19:00:00Z" },
+  { id:"FINAL", stage:"final", home:"TBD", away:"TBD", date:"Jul 19", kickoff:"2026-07-19T19:00:00Z" },
 ];
 
 const ALL_MATCHES = [...GROUP_MATCHES, ...KNOCKOUT_SLOTS];
+
+function isLocked(match) {
+  return new Date() >= new Date(match.kickoff);
+}
 
 const FLAGS = {
   "Mexico":"🇲🇽","South Korea":"🇰🇷","Czechia":"🇨🇿","South Africa":"🇿🇦",
@@ -153,9 +158,8 @@ const GROUPS = {
 
 const ADMIN_PW = "wc2026admin";
 const STAGE_LABELS = { group:"Group Stage", r32:"Round of 32", r16:"Round of 16", qf:"Quarter-Finals", sf:"Semi-Finals", "3rd":"3rd Place", final:"Final" };
-const STAGE_ORDER = ["group","r32","r16","qf","sf","3rd","final"];
+const STAGE_ORDER = ["group"];
 
-// Group matches by date
 function groupByDate(matches) {
   const map = {};
   for (const m of matches) {
@@ -166,8 +170,8 @@ function groupByDate(matches) {
 }
 
 function calcScore(pred, actual) {
-  if (!actual || actual.h==null || actual.a==null || actual.h==="" || actual.a==="") return 0;
-  if (!pred || pred.h==null || pred.a==null || pred.h==="" || pred.a==="") return 0;
+  if (!actual||actual.h==null||actual.a==null||actual.h===""||actual.a==="") return 0;
+  if (!pred||pred.h==null||pred.a==null||pred.h===""||pred.a==="") return 0;
   const ph=Number(pred.h),pa=Number(pred.a),ah=Number(actual.h),aa=Number(actual.a);
   if (isNaN(ph)||isNaN(pa)||isNaN(ah)||isNaN(aa)) return 0;
   if (ph===ah&&pa===aa) return 3;
@@ -198,30 +202,37 @@ function ScoreInput({h,a,onChange,disabled}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:6}}>
       <input type="number" min="0" max="99" value={h??""} disabled={disabled} onChange={e=>onChange({h:e.target.value,a})} style={s}/>
-      <span style={{color:T.gold,fontWeight:900,fontSize:18,fontFamily:"monospace"}}>:</span>
+      <span style={{color:disabled?"#2a4a30":T.gold,fontWeight:900,fontSize:18,fontFamily:"monospace"}}>:</span>
       <input type="number" min="0" max="99" value={a??""} disabled={disabled} onChange={e=>onChange({h,a:e.target.value})} style={s}/>
     </div>
   );
 }
 
-function MatchCard({match,pred,actual,onChange}) {
+function MatchCard({match,pred,actual,onChange,adminMode}) {
+  const locked = !adminMode && isLocked(match);
   const hasActual=actual&&actual.h!=null&&actual.a!=null&&actual.h!==""&&actual.a!=="";
   const pts=hasActual?calcScore(pred||{},actual):null;
-  const borderColor=pts===3?T.gold:pts===1?T.green:pts===0&&hasActual?"#c0392b":T.border;
+  const borderColor=pts===3?T.gold:pts===1?T.green:pts===0&&hasActual?"#c0392b":locked?"#132a1a":T.border;
+
   return (
-    <div style={{background:pts===3?"#1a2a0a":T.bgCard,border:`1px solid ${borderColor}`,borderRadius:12,padding:"14px 16px",marginBottom:8,boxShadow:pts===3?`0 0 12px ${T.gold}44`:"none"}}>
+    <div style={{background:pts===3?"#1a2a0a":T.bgCard,border:`1px solid ${borderColor}`,borderRadius:12,padding:"14px 16px",marginBottom:8,boxShadow:pts===3?`0 0 12px ${T.gold}44`:"none",opacity:locked&&!hasActual?0.75:1}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flex:1}}>
           <span style={{fontSize:22}}>{FLAGS[match.home]||"🏳️"}</span>
-          <span style={{color:T.white,fontSize:13,fontWeight:700}}>{match.home}</span>
+          <span style={{color:locked?T.muted:T.white,fontSize:13,fontWeight:700}}>{match.home}</span>
         </div>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
           {hasActual&&<div style={{fontSize:11,color:T.muted}}>Result: <span style={{color:T.gold,fontWeight:700}}>{actual.h}:{actual.a}</span></div>}
-          <ScoreInput h={pred?.h??""} a={pred?.a??""} onChange={onChange} disabled={false}/>
-          {!hasActual&&<div style={{fontSize:10,color:T.muted,letterSpacing:1}}>YOUR PICK</div>}
+          <ScoreInput h={pred?.h??""} a={pred?.a??""} onChange={onChange} disabled={locked}/>
+          {locked&&!hasActual&&(
+            <div style={{fontSize:10,color:"#e74c3c",letterSpacing:1,fontWeight:700,display:"flex",alignItems:"center",gap:3}}>
+              🔒 LOCKED
+            </div>
+          )}
+          {!locked&&<div style={{fontSize:10,color:T.muted,letterSpacing:1}}>YOUR PICK</div>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,flex:1,justifyContent:"flex-end"}}>
-          <span style={{color:T.white,fontSize:13,fontWeight:700,textAlign:"right"}}>{match.away}</span>
+          <span style={{color:locked?T.muted:T.white,fontSize:13,fontWeight:700,textAlign:"right"}}>{match.away}</span>
           <span style={{fontSize:22}}>{FLAGS[match.away]||"🏳️"}</span>
         </div>
       </div>
@@ -300,15 +311,14 @@ export default function App() {
 
   function myTotal(){return ALL_MATCHES.reduce((s,m)=>s+calcScore(predictions[m.id]||{},actuals[m.id]||{}),0);}
 
-  // Filter group matches
-  const filteredGroupMatches = activeGroup==="ALL" ? GROUP_MATCHES : GROUP_MATCHES.filter(m=>m.group===activeGroup);
-  const filteredAdminMatches = adminGroup==="ALL" ? GROUP_MATCHES : GROUP_MATCHES.filter(m=>m.group===adminGroup);
+  const filteredGroupMatches = activeGroup==="ALL"?GROUP_MATCHES:GROUP_MATCHES.filter(m=>m.group===activeGroup);
+  const filteredAdminMatches = adminGroup==="ALL"?GROUP_MATCHES:GROUP_MATCHES.filter(m=>m.group===adminGroup);
   const groupedByDate = groupByDate(filteredGroupMatches);
   const adminGroupedByDate = groupByDate(filteredAdminMatches);
   const kMatches = KNOCKOUT_SLOTS.filter(m=>m.stage===activeStage);
   const akMatches = KNOCKOUT_SLOTS.filter(m=>m.stage===adminStage);
 
-  if(authLoading)return(<div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:T.gold,fontSize:32,animation:"spin 1s linear infinite"}}>⚽</div></div>);
+  if(authLoading)return(<div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:T.gold,fontSize:40}}>⚽</div></div>);
 
   if(!user)return(
     <div style={{minHeight:"100vh",background:T.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:20,position:"relative",overflow:"hidden"}}>
@@ -349,12 +359,11 @@ export default function App() {
   return(
     <div style={{minHeight:"100vh",background:T.bg,color:T.white,fontFamily:"'Inter','Segoe UI',sans-serif",position:"relative"}}>
       <FieldStripes/>
-      {/* Header */}
       <div style={{background:T.bgDeep,borderBottom:`1px solid ${T.border}`,padding:"10px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,position:"sticky",top:0,zIndex:100}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:20}}>🏆</span>
           <div>
-            <div style={{color:T.gold,fontWeight:900,fontSize:14}}>WC 2026 Quiniela</div>
+            <div style={{color:T.gold,fontWeight:900,fontSize:14}}>Zalles WC 2026 Quiniela</div>
             <div style={{color:T.muted,fontSize:11}}>{isAdmin?"⚙️ Admin":`${user.displayName||user.email}`}</div>
           </div>
         </div>
@@ -365,7 +374,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Nav */}
       <div style={{display:"flex",gap:2,padding:"10px 12px",background:T.bgDeep,borderBottom:`1px solid ${T.border}`,overflowX:"auto"}}>
         {[{key:"predictions",icon:"📋",label:"Predictions"},{key:"leaderboard",icon:"🏅",label:"Leaderboard"},...(isAdmin?[{key:"admin",icon:"⚙️",label:"Results"}]:[])].map(tab=>(
           <button key={tab.key} onClick={()=>{setScreen(tab.key);if(tab.key==="leaderboard")loadLeaderboard();}}
@@ -375,61 +383,40 @@ export default function App() {
         ))}
       </div>
 
-      {/* ── PREDICTIONS ── */}
       {screen==="predictions"&&(
         <div style={{maxWidth:660,margin:"0 auto",padding:"16px",position:"relative",zIndex:1}}>
-          <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
-            {STAGE_ORDER.map(s=>(
-              <button key={s} onClick={()=>setActiveStage(s)}
-                style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${activeStage===s?T.goldDim:T.border}`,cursor:"pointer",fontSize:12,fontWeight:700,whiteSpace:"nowrap",background:activeStage===s?T.grass:"transparent",color:activeStage===s?T.gold:T.muted}}>
-                {STAGE_LABELS[s]}
-              </button>
-            ))}
-          </div>
-
           {activeStage==="group"&&(
             <>
-              {/* Group filter */}
               <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
-                <button onClick={()=>setActiveGroup("ALL")}
-                  style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${activeGroup==="ALL"?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:12,background:activeGroup==="ALL"?T.grass:"transparent",color:activeGroup==="ALL"?T.gold:T.muted}}>
-                  All
-                </button>
+                <button onClick={()=>setActiveGroup("ALL")} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${activeGroup==="ALL"?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:12,background:activeGroup==="ALL"?T.grass:"transparent",color:activeGroup==="ALL"?T.gold:T.muted}}>All</button>
                 {Object.keys(GROUPS).map(g=>(
-                  <button key={g} onClick={()=>setActiveGroup(g)}
-                    style={{width:36,height:36,borderRadius:8,border:`1px solid ${activeGroup===g?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:14,background:activeGroup===g?T.grass:"transparent",color:activeGroup===g?T.gold:T.muted}}>
-                    {g}
-                  </button>
+                  <button key={g} onClick={()=>setActiveGroup(g)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${activeGroup===g?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:14,background:activeGroup===g?T.grass:"transparent",color:activeGroup===g?T.gold:T.muted}}>{g}</button>
                 ))}
               </div>
-
-              {/* Matches grouped by date */}
+              <div style={{background:"#0a1a10",border:`1px solid ${T.border}`,borderRadius:10,padding:"8px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:14}}>🔒</span>
+                <span style={{color:T.muted,fontSize:12}}>Predictions lock automatically at kickoff time</span>
+              </div>
               {Object.entries(groupedByDate).map(([date,matches])=>(
                 <div key={date}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8,marginTop:16}}>
                     <div style={{height:1,flex:1,background:T.border}}/>
-                    <div style={{color:T.gold,fontSize:12,fontWeight:800,letterSpacing:1,textTransform:"uppercase",background:T.bgDeep,padding:"3px 12px",borderRadius:20,border:`1px solid ${T.border}`}}>
-                      📅 {date}
-                    </div>
+                    <div style={{color:T.gold,fontSize:12,fontWeight:800,letterSpacing:1,textTransform:"uppercase",background:T.bgDeep,padding:"3px 12px",borderRadius:20,border:`1px solid ${T.border}`}}>📅 {date}</div>
                     <div style={{height:1,flex:1,background:T.border}}/>
                   </div>
                   {matches.map(m=>(
                     <MatchCard key={m.id} match={m} pred={predictions[m.id]} actual={actuals[m.id]}
-                      onChange={val=>setPredictions(p=>({...p,[m.id]:{...p[m.id],...val}}))}/>
+                      onChange={val=>setPredictions(p=>({...p,[m.id]:{...p[m.id],...val}}))} adminMode={false}/>
                   ))}
                 </div>
               ))}
             </>
           )}
 
-          {activeStage!=="group"&&kMatches.map(m=>(
-            <MatchCard key={m.id} match={m} pred={predictions[m.id]} actual={actuals[m.id]}
-              onChange={val=>setPredictions(p=>({...p,[m.id]:{...p[m.id],...val}}))}/>
-          ))}
+
 
           <div style={{marginTop:20,display:"flex",alignItems:"center",gap:12,position:"sticky",bottom:12}}>
-            <button onClick={handleSave} disabled={saving}
-              style={{flex:1,padding:"14px",fontSize:15,fontWeight:900,background:`linear-gradient(135deg,${T.gold},${T.goldDim})`,color:T.bgDeep,border:"none",borderRadius:12,cursor:"pointer",opacity:saving?0.6:1}}>
+            <button onClick={handleSave} disabled={saving} style={{flex:1,padding:"14px",fontSize:15,fontWeight:900,background:`linear-gradient(135deg,${T.gold},${T.goldDim})`,color:T.bgDeep,border:"none",borderRadius:12,cursor:"pointer",opacity:saving?0.6:1}}>
               {saving?"Saving...":"💾 Save Predictions"}
             </button>
             {saveMsg&&<span style={{color:T.green,fontWeight:800}}>{saveMsg}</span>}
@@ -438,13 +425,12 @@ export default function App() {
         </div>
       )}
 
-      {/* ── LEADERBOARD ── */}
       {screen==="leaderboard"&&(
         <div style={{maxWidth:600,margin:"0 auto",padding:"20px 16px",position:"relative",zIndex:1}}>
           <div style={{textAlign:"center",marginBottom:24}}>
             <div style={{fontSize:36}}>🏅</div>
             <h2 style={{color:T.gold,fontWeight:900,margin:"4px 0 2px",fontSize:22}}>Leaderboard</h2>
-            <div style={{color:T.muted,fontSize:13}}>World Cup 2026 Quiniela</div>
+            <div style={{color:T.muted,fontSize:13}}>Zalles World Cup 2026 Quiniela</div>
           </div>
           {loading?(<div style={{textAlign:"center",color:T.muted,padding:40}}>Loading...</div>
           ):allUsers.length===0?(<div style={{textAlign:"center",color:T.muted,padding:40}}><div style={{fontSize:40,marginBottom:12}}>⚽</div>No predictions yet!</div>
@@ -471,7 +457,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ── ADMIN ── */}
       {screen==="admin"&&isAdmin&&(
         <div style={{maxWidth:660,margin:"0 auto",padding:"16px",position:"relative",zIndex:1}}>
           <div style={{background:"#1a0a00",border:"1px solid #5a3000",borderRadius:12,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
@@ -481,24 +466,12 @@ export default function App() {
               <div style={{color:"#8a6030",fontSize:12}}>Scores update everyone's points automatically.</div>
             </div>
           </div>
-          <div style={{display:"flex",gap:6,marginBottom:14,overflowX:"auto"}}>
-            {STAGE_ORDER.map(s=>(
-              <button key={s} onClick={()=>setAdminStage(s)}
-                style={{padding:"6px 14px",borderRadius:20,border:`1px solid ${adminStage===s?"#c09030":T.border}`,cursor:"pointer",fontSize:12,fontWeight:700,whiteSpace:"nowrap",background:adminStage===s?"#2a1a00":"transparent",color:adminStage===s?T.gold:T.muted}}>
-                {STAGE_LABELS[s]}
-              </button>
-            ))}
-          </div>
           {adminStage==="group"&&(
             <>
               <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
-                <button onClick={()=>setAdminGroup("ALL")}
-                  style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${adminGroup==="ALL"?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:12,background:adminGroup==="ALL"?T.grass:"transparent",color:adminGroup==="ALL"?T.gold:T.muted}}>All</button>
+                <button onClick={()=>setAdminGroup("ALL")} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${adminGroup==="ALL"?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:12,background:adminGroup==="ALL"?T.grass:"transparent",color:adminGroup==="ALL"?T.gold:T.muted}}>All</button>
                 {Object.keys(GROUPS).map(g=>(
-                  <button key={g} onClick={()=>setAdminGroup(g)}
-                    style={{width:36,height:36,borderRadius:8,border:`1px solid ${adminGroup===g?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:14,background:adminGroup===g?"#2a1a00":"transparent",color:adminGroup===g?T.gold:T.muted}}>
-                    {g}
-                  </button>
+                  <button key={g} onClick={()=>setAdminGroup(g)} style={{width:36,height:36,borderRadius:8,border:`1px solid ${adminGroup===g?T.gold:T.border}`,cursor:"pointer",fontWeight:900,fontSize:14,background:adminGroup===g?"#2a1a00":"transparent",color:adminGroup===g?T.gold:T.muted}}>{g}</button>
                 ))}
               </div>
               {Object.entries(adminGroupedByDate).map(([date,matches])=>(
@@ -523,24 +496,9 @@ export default function App() {
               ))}
             </>
           )}
-          {adminStage!=="group"&&akMatches.map(m=>(
-            <div key={m.id} style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,flex:1}}>
-                  <span style={{fontSize:18}}>{FLAGS[m.home]||"🏳️"}</span>
-                  <span style={{color:T.white,fontSize:13,fontWeight:600}}>{m.home}</span>
-                </div>
-                <ScoreInput h={actuals[m.id]?.h??""} a={actuals[m.id]?.a??""} onChange={val=>setActuals(p=>({...p,[m.id]:{...p[m.id],...val}}))} disabled={false}/>
-                <div style={{display:"flex",alignItems:"center",gap:6,flex:1,justifyContent:"flex-end"}}>
-                  <span style={{color:T.white,fontSize:13,fontWeight:600}}>{m.away}</span>
-                  <span style={{fontSize:18}}>{FLAGS[m.away]||"🏳️"}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+
           <div style={{marginTop:20,display:"flex",alignItems:"center",gap:12}}>
-            <button onClick={handleSaveActuals} disabled={saving}
-              style={{flex:1,padding:"14px",fontSize:15,fontWeight:900,background:"linear-gradient(135deg,#c09030,#8a6020)",color:"#fff",border:"none",borderRadius:12,cursor:"pointer",opacity:saving?0.6:1}}>
+            <button onClick={handleSaveActuals} disabled={saving} style={{flex:1,padding:"14px",fontSize:15,fontWeight:900,background:"linear-gradient(135deg,#c09030,#8a6020)",color:"#fff",border:"none",borderRadius:12,cursor:"pointer",opacity:saving?0.6:1}}>
               {saving?"Saving...":"💾 Save Results"}
             </button>
             {saveMsg&&<span style={{color:T.green,fontWeight:800}}>{saveMsg}</span>}
