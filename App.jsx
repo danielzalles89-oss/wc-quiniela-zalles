@@ -475,18 +475,21 @@ export default function App() {
           ):allUserPreds.length===0?(
             <div style={{textAlign:"center",color:T.muted,padding:40}}>No predictions saved yet.</div>
           ):(()=>{
-            const playedMatches = GROUP_MATCHES.filter(m=>isLocked(m));
-            return playedMatches.map(m=>{
+            const allMatches = GROUP_MATCHES; // Show ALL matches, not just locked
+            return allMatches.map(m=>{
               const actual = actuals[m.id];
               const hasActual = actual&&actual.h!==""&&actual.a!=="";
+              const locked = isLocked(m);
               return (
-                <div key={m.id} style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:14,marginBottom:12}}>
+                <div key={m.id} style={{background:T.bgCard,border:`1px solid ${locked?T.border:"#1a4a2e"}`,borderRadius:12,padding:14,marginBottom:12}}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontSize:20}}>{FLAGS[m.home]||"🏳️"}</span>
                       <span style={{color:T.white,fontWeight:800,fontSize:14}}>{m.home} vs {m.away}</span>
                       <span style={{fontSize:20}}>{FLAGS[m.away]||"🏳️"}</span>
                       <span style={{color:T.muted,fontSize:11}}>· {m.date}</span>
+                      {!locked&&<span style={{background:"#1a4a2e",color:"#2ecc71",padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700}}>OPEN</span>}
+                      {locked&&!hasActual&&<span style={{background:"#1a1a00",color:"#f5c842",padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700}}>🔒 LOCKED</span>}
                     </div>
                     {hasActual?(
                       <span style={{background:"#f5c84222",color:T.gold,padding:"3px 12px",borderRadius:20,fontWeight:900,fontSize:13,fontFamily:"monospace"}}>
