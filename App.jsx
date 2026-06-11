@@ -264,6 +264,24 @@ export default function App() {
   const [isAdmin,setIsAdmin]=useState(false);
   const [activeGroup,setActiveGroup]=useState("ALL");
   const [adminGroup,setAdminGroup]=useState("ALL");
+  const [allUserPreds,setAllUserPreds]=useState([]);
+  const [loadingPreds,setLoadingPreds]=useState(false);
+  const autoSaveTimer = useState(null);
+
+  // Autosave whenever predictions change
+  useEffect(()=>{
+    if(!user||Object.keys(predictions).length===0)return;
+    const timer=setTimeout(async()=>{
+      await setDoc(doc(db,"predictions",user.uid),{
+        ...predictions,
+        _displayName:user.displayName||user.email,
+        _photoURL:user.photoURL||null,
+      });
+      setSaveMsg("✓ Auto-saved");
+      setTimeout(()=>setSaveMsg(""),2000);
+    },1500);
+    return ()=>clearTimeout(timer);
+  },[predictions]);
 
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{
@@ -295,6 +313,18 @@ export default function App() {
     });
     users.sort((a,b)=>b.total-a.total);
     setAllUsers(users);setLoading(false);
+  }
+
+  async function loadAllUserPreds(){
+    setLoadingPreds(true);
+    const snap=await getDocs(collection(db,"predictions"));
+    const users=[];
+    snap.forEach(d=>{
+      const p=d.data();
+      users.push({uid:d.id,name:p._displayName||d.id,photo:p._photoURL||null,preds:p});
+    });
+    setAllUserPreds(users);
+    setLoadingPreds(false);
   }
 
   async function handleSave(){
@@ -375,8 +405,15 @@ export default function App() {
       </div>
 
       <div style={{display:"flex",gap:2,padding:"10px 12px",background:T.bgDeep,borderBottom:`1px solid ${T.border}`,overflowX:"auto"}}>
-        {[{key:"predictions",icon:"📋",label:"Predictions"},{key:"leaderboard",icon:"🏅",label:"Leaderboard"},...(isAdmin?[{key:"admin",icon:"⚙️",label:"Results"}]:[])].map(tab=>(
-          <button key={tab.key} onClick={()=>{setScreen(tab.key);if(tab.key==="leaderboard")loadLeaderboard();}}
+        {[
+          {key:"predictions",icon:"📋",label:"Predictions"},
+          {key:"leaderboard",icon:"🏅",label:"Leaderboard"},
+          ...(isAdmin?[
+            {key:"viewpreds",icon:"🔍",label:"View All"},
+            {key:"admin",icon:"⚙️",label:"Results"},
+          ]:[]),
+        ].map(tab=>(
+          <button key={tab.key} onClick={()=>{setScreen(tab.key);if(tab.key==="leaderboard")loadLeaderboard();if(tab.key==="viewpreds")loadAllUserPreds();}}
             style={{padding:"8px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,whiteSpace:"nowrap",background:screen===tab.key?T.grass:"transparent",color:screen===tab.key?T.gold:T.muted,borderBottom:screen===tab.key?`2px solid ${T.gold}`:"2px solid transparent"}}>
             {tab.icon} {tab.label}
           </button>
@@ -421,7 +458,96 @@ export default function App() {
             </button>
             {saveMsg&&<span style={{color:T.green,fontWeight:800}}>{saveMsg}</span>}
           </div>
-          <div style={{color:T.muted,fontSize:11,textAlign:"center",marginTop:10,letterSpacing:0.5}}>✓ Correct winner = 1 pt · 🎯 Exact score = 3 pts</div>
+          <div style={{color:T.muted,fontSize:11,textAlign:"center",marginTop:10,letterSpacing:0.5}}>
+            ✓ Correct winner = 1 pt · 🎯 Exact score = 3 pts
+            <span style={{marginLeft:8,color:"#2ecc71"}}>💾 Auto-saves as you type</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── VIEW ALL PREDICTIONS (admin only) ── */}
+      {screen==="viewpreds"&&isAdmin&&(
+        <div style={{maxWidth:720,margin:"0 auto",padding:"16px",position:"relative",zIndex:1}}>
+          <div style={{color:T.gold,fontWeight:900,fontSize:18,marginBottom:4}}>🔍 All Predictions</div>
+          <div style={{color:T.muted,fontSize:12,marginBottom:16}}>You can edit any player's prediction directly. Changes save immediately.</div>
+          {loadingPreds?(
+            <div style={{textAlign:"center",color:T.muted,padding:40}}>Loading...</div>
+          ):allUserPreds.length===0?(
+            <div style={{textAlign:"center",color:T.muted,padding:40}}>No predictions saved yet.</div>
+          ):(()=>{
+            const playedMatches = GROUP_MATCHES.filter(m=>isLocked(m));
+            return playedMatches.map(m=>{
+              const actual = actuals[m.id];
+              const hasActual = actual&&actual.h!==""&&actual.a!=="";
+              return (
+                <div key={m.id} style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:14,marginBottom:12}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:20}}>{FLAGS[m.home]||"🏳️"}</span>
+                      <span style={{color:T.white,fontWeight:800,fontSize:14}}>{m.home} vs {m.away}</span>
+                      <span style={{fontSize:20}}>{FLAGS[m.away]||"🏳️"}</span>
+                      <span style={{color:T.muted,fontSize:11}}>· {m.date}</span>
+                    </div>
+                    {hasActual?(
+                      <span style={{background:"#f5c84222",color:T.gold,padding:"3px 12px",borderRadius:20,fontWeight:900,fontSize:13,fontFamily:"monospace"}}>
+                        Result: {actual.h}:{actual.a}
+                      </span>
+                    ):(
+                      <span style={{background:T.bgDeep,color:T.muted,padding:"3px 12px",borderRadius:20,fontSize:11}}>No result yet</span>
+                    )}
+                  </div>
+
+                  {/* Predictions with editable inputs */}
+                  {allUserPreds.map((u,i)=>{
+                    const p = u.preds[m.id]||{h:"",a:""};
+                    const hasPred = p.h!==""&&p.a!=="";
+                    const pts = hasPred&&hasActual ? calcScore(p,actual) : null;
+                    return (
+                      <div key={u.uid} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:`1px solid ${T.border}33`,gap:12,flexWrap:"wrap"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:120}}>
+                          {u.photo&&<img src={u.photo} style={{width:24,height:24,borderRadius:"50%"}} alt=""/>}
+                          <span style={{color:hasPred?T.white:T.muted,fontSize:13,fontWeight:600}}>{u.name}</span>
+                          {!hasPred&&<span style={{color:"#e74c3c",fontSize:10,fontWeight:700,background:"#e74c3c22",padding:"1px 6px",borderRadius:10}}>NO PICK</span>}
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          {/* Editable score inputs */}
+                          <div style={{display:"flex",alignItems:"center",gap:4}}>
+                            <input type="number" min="0" max="99"
+                              value={p.h??""}
+                              onChange={async e=>{
+                                const newH = e.target.value;
+                                const newPreds = {...u.preds,[m.id]:{...p,h:newH}};
+                                setAllUserPreds(prev=>prev.map(x=>x.uid===u.uid?{...x,preds:newPreds}:x));
+                                await setDoc(doc(db,"predictions",u.uid),{...newPreds,_displayName:u.name,_photoURL:u.photo||null});
+                              }}
+                              style={{width:40,textAlign:"center",padding:"5px 2px",background:T.grass,border:`1px solid ${T.goldDim}`,borderRadius:6,color:T.gold,fontSize:16,fontWeight:900,fontFamily:"monospace",outline:"none"}}
+                            />
+                            <span style={{color:T.gold,fontWeight:900}}>:</span>
+                            <input type="number" min="0" max="99"
+                              value={p.a??""}
+                              onChange={async e=>{
+                                const newA = e.target.value;
+                                const newPreds = {...u.preds,[m.id]:{...p,a:newA}};
+                                setAllUserPreds(prev=>prev.map(x=>x.uid===u.uid?{...x,preds:newPreds}:x));
+                                await setDoc(doc(db,"predictions",u.uid),{...newPreds,_displayName:u.name,_photoURL:u.photo||null});
+                              }}
+                              style={{width:40,textAlign:"center",padding:"5px 2px",background:T.grass,border:`1px solid ${T.goldDim}`,borderRadius:6,color:T.gold,fontSize:16,fontWeight:900,fontFamily:"monospace",outline:"none"}}
+                            />
+                          </div>
+                          {pts!==null&&(
+                            <span style={{background:pts===3?"#f5c84222":pts===1?"#2ecc7122":"#e74c3c22",color:pts===3?T.gold:pts===1?"#2ecc71":"#e74c3c",padding:"2px 10px",borderRadius:20,fontSize:12,fontWeight:800,minWidth:32,textAlign:"center"}}>
+                              +{pts}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            });
+          })()}
+          <button onClick={loadAllUserPreds} style={{marginTop:8,width:"100%",padding:"12px",fontSize:13,fontWeight:700,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,cursor:"pointer"}}>🔄 Refresh</button>
         </div>
       )}
 
