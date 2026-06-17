@@ -287,6 +287,10 @@ export default function App() {
     const unsub=onAuthStateChanged(auth,async u=>{
       setUser(u);setAuthLoading(false);
       if(u){
+        // Auto-grant admin to Daniel's account, no password needed
+        if(u.email==="danielzalles89@gmail.com"){
+          setIsAdmin(true);
+        }
         const snap=await getDoc(doc(db,"predictions",u.uid));
         if(snap.exists())setPredictions(snap.data());
         const aSnap=await getDoc(doc(db,"actuals","results"));
@@ -394,12 +398,12 @@ export default function App() {
           <span style={{fontSize:20}}>🏆</span>
           <div>
             <div style={{color:T.gold,fontWeight:900,fontSize:14}}>Zalles WC 2026 Quiniela</div>
-            <div style={{color:T.muted,fontSize:11}}>{isAdmin?"⚙️ Admin":`${user.displayName||user.email}`}</div>
+            <div style={{color:T.muted,fontSize:11}}>{isAdmin?`⚙️ Admin · ${user.displayName||user.email}`:`${user.displayName||user.email}`}</div>
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {user.photoURL&&<img src={user.photoURL} style={{width:28,height:28,borderRadius:"50%",border:`2px solid ${T.gold}`}} alt=""/>}
-          {!isAdmin&&<div style={{background:T.grass,border:`1px solid ${T.goldDim}`,padding:"5px 14px",borderRadius:20,color:T.gold,fontWeight:900,fontSize:15}}>{myTotal()} pts</div>}
+          <div style={{background:T.grass,border:`1px solid ${T.goldDim}`,padding:"5px 14px",borderRadius:20,color:T.gold,fontWeight:900,fontSize:15}}>{myTotal()} pts</div>
           <button onClick={handleLogout} style={{background:"none",border:`1px solid ${T.border}`,color:T.muted,borderRadius:6,padding:"5px 12px",cursor:"pointer",fontSize:12}}>Sign out</button>
         </div>
       </div>
