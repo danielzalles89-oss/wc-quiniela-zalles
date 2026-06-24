@@ -1,0 +1,31 @@
+name: Clear All Results
+
+on:
+  workflow_dispatch:
+
+jobs:
+  clear:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear all results from Firebase
+        run: |
+          node --input-type=commonjs << 'NODESCRIPT'
+          const https = require('https');
+          const PROJECT_ID = 'wc-quiniela-4d474';
+          const API_KEY = 'AIzaSyAE_GXAmfPbKtQsHRVZl28zitk3oYHfSWI';
+
+          const empty = {};
+          for (let i = 1; i <= 72; i++) {
+            empty[`G${i}`] = { mapValue: { fields: { h: { stringValue: '' }, a: { stringValue: '' } } } };
+          }
+
+          const body = JSON.stringify({ fields: empty });
+          const req = https.request({
+            hostname: 'firestore.googleapis.com',
+            path: `/v1/projects/${PROJECT_ID}/databases/(default)/documents/actuals/results?key=${API_KEY}`,
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+          }, r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>{ console.log('✓ All results cleared'); }); });
+          req.on('error', e => console.error(e));
+          req.write(body); req.end();
+          NODESCRIPT
