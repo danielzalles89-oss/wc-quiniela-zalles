@@ -581,14 +581,57 @@ export default function App() {
       {screen==="viewpreds"&&isAdmin&&(
         <div style={{maxWidth:720,margin:"0 auto",padding:"16px",position:"relative",zIndex:1}}>
           <div style={{color:T.gold,fontWeight:900,fontSize:18,marginBottom:4}}>🔍 All Predictions</div>
-          <div style={{color:T.muted,fontSize:12,marginBottom:16}}>You can edit any player's prediction directly. Changes save immediately.</div>
+          <div style={{color:T.muted,fontSize:12,marginBottom:12}}>You can edit any player's prediction directly. Changes save immediately.</div>
+
+          {/* Stage selector */}
+          <div style={{display:"flex",gap:6,marginBottom:16,background:T.bgDeep,padding:6,borderRadius:10,border:`1px solid ${T.border}`}}>
+            {["group","r32"].map(s=>(
+              <button key={s} onClick={()=>setActiveStage(s)}
+                style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:800,fontSize:12,
+                  background:activeStage===s?T.grass:"transparent",color:activeStage===s?T.gold:T.muted}}>
+                {s==="group"?"⚽ Fase de Grupos":"⚔️ Round of 32"}
+              </button>
+            ))}
+          </div>
+
           {loadingPreds?(
             <div style={{textAlign:"center",color:T.muted,padding:40}}>Loading...</div>
           ):allUserPreds.length===0?(
             <div style={{textAlign:"center",color:T.muted,padding:40}}>No predictions saved yet.</div>
           ):(()=>{
-            const allMatches = GROUP_MATCHES;
-            return allMatches.map(m=>{
+            const allMatches = activeStage==="group" ? GROUP_MATCHES : KNOCKOUT_SLOTS.filter(m=>m.stage==="r32");
+            return (<>
+              {/* Champion picks - only in R32 tab */}
+              {activeStage==="r32"&&(
+                <div style={{background:T.bgCard,border:`2px solid ${T.gold}`,borderRadius:12,padding:14,marginBottom:12}}>
+                  <div style={{color:T.gold,fontWeight:900,fontSize:14,marginBottom:10}}>🏆 Campeón del Mundial</div>
+                  {allUserPreds.map(u=>{
+                    const champion = u.preds._champion||null;
+                    const actualChampion = actuals._champion||null;
+                    const hit = champion && actualChampion && champion===actualChampion;
+                    return (
+                      <div key={u.uid} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:`1px solid ${T.border}33`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          {u.photo&&<img src={u.photo} style={{width:24,height:24,borderRadius:"50%"}} alt=""/>}
+                          <span style={{color:T.white,fontSize:13,fontWeight:600}}>{u.name}</span>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          {champion?(
+                            <span style={{color:hit?T.gold:T.white,fontWeight:700,fontSize:13}}>
+                              {FLAGS[champion]||""} {champion}
+                            </span>
+                          ):(
+                            <span style={{color:"#e74c3c",fontSize:10,fontWeight:700,background:"#e74c3c22",padding:"1px 6px",borderRadius:10}}>NO PICK</span>
+                          )}
+                          {hit&&<span style={{color:T.gold,fontWeight:900,fontSize:12,background:"#f5c84222",padding:"2px 8px",borderRadius:10}}>+{CHAMPION_BONUS_PTS} 🏆</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {allMatches.map(m=>{
               const actual = actuals[m.id];
               const hasActual = actual&&actual.h!==""&&actual.a!=="";
               const locked = isLocked(m);
@@ -612,7 +655,6 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Predictions with editable inputs */}
                   {allUserPreds.map((u,i)=>{
                     const p = u.preds[m.id]||{h:"",a:""};
                     const hasPred = p.h!==""&&p.a!=="";
@@ -625,7 +667,6 @@ export default function App() {
                           {!hasPred&&<span style={{color:"#e74c3c",fontSize:10,fontWeight:700,background:"#e74c3c22",padding:"1px 6px",borderRadius:10}}>NO PICK</span>}
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          {/* Editable score inputs */}
                           <div style={{display:"flex",alignItems:"center",gap:4}}>
                             <input type="number" min="0" max="99"
                               value={p.h??""}
@@ -660,7 +701,8 @@ export default function App() {
                   })}
                 </div>
               );
-            });
+            })}
+            </>);
           })()}
           <div style={{display:"flex",gap:8,marginTop:8}}>
             <button onClick={loadAllUserPreds} style={{flex:1,padding:"12px",fontSize:13,fontWeight:700,background:"transparent",border:`1px solid ${T.border}`,borderRadius:10,color:T.muted,cursor:"pointer"}}>🔄 Refresh</button>
