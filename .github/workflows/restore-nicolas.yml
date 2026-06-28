@@ -14,26 +14,18 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          node --input-type=commonjs << 'NODESCRIPT'
-          const admin = require('./node_modules/firebase-admin');
+          cat > restore.mjs << 'JSEOF'
+          import { initializeApp, cert } from 'firebase-admin/app';
+          import { getFirestore } from 'firebase-admin/firestore';
 
           const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+          initializeApp({ credential: cert(serviceAccount) });
+          const db = getFirestore();
 
-          admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-          });
-
-          const db = admin.firestore();
           const UID = 'ooeLmeDHwiQOScHZxsTNFlTpYMx1';
           const picks = {"G1": {"h": "2", "a": "0"}, "G2": {"h": "1", "a": "1"}, "G3": {"h": "2", "a": "1"}, "G4": {"h": "1", "a": "0"}, "G5": {"h": "0", "a": "2"}, "G6": {"h": "1", "a": "1"}, "G7": {"h": "0", "a": "2"}, "G8": {"h": "0", "a": "0"}, "G9": {"h": "4", "a": "0"}, "G10": {"h": "2", "a": "1"}, "G11": {"h": "1", "a": "1"}, "G12": {"h": "2", "a": "0"}, "G13": {"h": "3", "a": "0"}, "G14": {"h": "2", "a": "0"}, "G15": {"h": "0", "a": "2"}, "G16": {"h": "1", "a": "1"}, "G17": {"h": "2", "a": "0"}, "G18": {"h": "0", "a": "2"}, "G19": {"h": "2", "a": "0"}, "G20": {"h": "1", "a": "0"}, "G21": {"h": "2", "a": "0"}, "G22": {"h": "0", "a": "1"}, "G23": {"h": "1", "a": "0"}, "G24": {"h": "0", "a": "1"}, "G25": {"h": "1", "a": "1"}, "G26": {"h": "2", "a": "0"}, "G27": {"h": "1", "a": "0"}, "G28": {"h": "2", "a": "0"}, "G29": {"h": "1", "a": "1"}, "G30": {"h": "1", "a": "0"}, "G31": {"h": "2", "a": "0"}, "G32": {"h": "2", "a": "1"}, "G33": {"h": "2", "a": "0"}, "G34": {"h": "2", "a": "0"}, "G35": {"h": "1", "a": "0"}, "G36": {"h": "1", "a": "1"}, "G37": {"h": "2", "a": "1"}, "G38": {"h": "1", "a": "1"}, "G39": {"h": "2", "a": "0"}, "G40": {"h": "2", "a": "0"}, "G41": {"h": "2", "a": "1"}, "G42": {"h": "0", "a": "1"}, "G43": {"h": "2", "a": "0"}, "G44": {"h": "1", "a": "0"}, "G45": {"h": "2", "a": "1"}, "G46": {"h": "2", "a": "0"}, "G47": {"h": "2", "a": "0"}, "G48": {"h": "2", "a": "0"}, "_displayName": "Nicolas Zalles"};
 
-          db.collection('predictions').doc(UID).set(picks, {merge: true})
-            .then(() => {
-              console.log('✅ Nicolas picks restored!');
-              process.exit(0);
-            })
-            .catch(err => {
-              console.error('❌ Error:', err);
-              process.exit(1);
-            });
-          NODESCRIPT
+          await db.collection('predictions').doc(UID).set(picks, { merge: true });
+          console.log('✅ Nicolas picks restored!');
+          JSEOF
+          node restore.mjs
