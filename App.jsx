@@ -610,19 +610,27 @@ export default function App() {
                     const actualChampion = actuals._champion||null;
                     const hit = champion && actualChampion && champion===actualChampion;
                     return (
-                      <div key={u.uid} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:`1px solid ${T.border}33`}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div key={u.uid} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 0",borderTop:`1px solid ${T.border}33`,gap:8,flexWrap:"wrap"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:120}}>
                           {u.photo&&<img src={u.photo} style={{width:24,height:24,borderRadius:"50%"}} alt=""/>}
                           <span style={{color:T.white,fontSize:13,fontWeight:600}}>{u.name}</span>
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          {champion?(
-                            <span style={{color:hit?T.gold:T.white,fontWeight:700,fontSize:13}}>
-                              {FLAGS[champion]||""} {champion}
-                            </span>
-                          ):(
-                            <span style={{color:"#e74c3c",fontSize:10,fontWeight:700,background:"#e74c3c22",padding:"1px 6px",borderRadius:10}}>NO PICK</span>
-                          )}
+                          <select
+                            value={champion||""}
+                            onChange={async e=>{
+                              const val = e.target.value;
+                              const newPreds = {...u.preds, _champion: val};
+                              setAllUserPreds(prev=>prev.map(x=>x.uid===u.uid?{...x,preds:newPreds}:x));
+                              await setDoc(doc(db,"predictions",u.uid),{_champion:val},{merge:true});
+                            }}
+                            style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${hit?T.gold:T.border}`,background:T.bgDeep,color:champion?T.white:T.muted,fontSize:12,fontWeight:700}}
+                          >
+                            <option value="">-- Sin pick --</option>
+                            {ALL_32_TEAMS.sort().map(t=>(
+                              <option key={t} value={t}>{FLAGS[t]||""} {t}</option>
+                            ))}
+                          </select>
                           {hit&&<span style={{color:T.gold,fontWeight:900,fontSize:12,background:"#f5c84222",padding:"2px 8px",borderRadius:10}}>+{CHAMPION_BONUS_PTS} 🏆</span>}
                         </div>
                       </div>
