@@ -282,7 +282,7 @@ export default function App() {
         ...predictions,
         _displayName:user.displayName||user.email,
         _photoURL:user.photoURL||null,
-      });
+      },{merge:true});
       setSaveMsg("✓ Auto-saved");
       setTimeout(()=>setSaveMsg(""),2000);
     },1500);
@@ -344,7 +344,7 @@ export default function App() {
 
   async function handleSave(){
     if(!user)return;setSaving(true);
-    await setDoc(doc(db,"predictions",user.uid),{...predictions,_displayName:user.displayName||user.email,_photoURL:user.photoURL||null});
+    await setDoc(doc(db,"predictions",user.uid),{...predictions,_displayName:user.displayName||user.email,_photoURL:user.photoURL||null},{merge:true});
     setSaveMsg("✓ Saved!");setTimeout(()=>setSaveMsg(""),2500);setSaving(false);
   }
 
@@ -633,7 +633,7 @@ export default function App() {
                                 const newH = e.target.value;
                                 const newPreds = {...u.preds,[m.id]:{...p,h:newH}};
                                 setAllUserPreds(prev=>prev.map(x=>x.uid===u.uid?{...x,preds:newPreds}:x));
-                                await setDoc(doc(db,"predictions",u.uid),{...newPreds,_displayName:u.name,_photoURL:u.photo||null});
+                                await setDoc(doc(db,"predictions",u.uid),{...newPreds,_displayName:u.name,_photoURL:u.photo||null},{merge:true});
                               }}
                               style={{width:40,textAlign:"center",padding:"5px 2px",background:T.grass,border:`1px solid ${T.goldDim}`,borderRadius:6,color:T.gold,fontSize:16,fontWeight:900,fontFamily:"monospace",outline:"none"}}
                             />
@@ -644,7 +644,7 @@ export default function App() {
                                 const newA = e.target.value;
                                 const newPreds = {...u.preds,[m.id]:{...p,a:newA}};
                                 setAllUserPreds(prev=>prev.map(x=>x.uid===u.uid?{...x,preds:newPreds}:x));
-                                await setDoc(doc(db,"predictions",u.uid),{...newPreds,_displayName:u.name,_photoURL:u.photo||null});
+                                await setDoc(doc(db,"predictions",u.uid),{...newPreds,_displayName:u.name,_photoURL:u.photo||null},{merge:true});
                               }}
                               style={{width:40,textAlign:"center",padding:"5px 2px",background:T.grass,border:`1px solid ${T.goldDim}`,borderRadius:6,color:T.gold,fontSize:16,fontWeight:900,fontFamily:"monospace",outline:"none"}}
                             />
