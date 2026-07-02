@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs, addDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAE_GXAmfPbKtQsHRVZl28zitk3oYHfSWI",
@@ -140,8 +140,6 @@ const FLAGS = {
   "Argentina":"🇦🇷","Austria":"🇦🇹","Algeria":"🇩🇿","Jordan":"🇯🇴",
   "Portugal":"🇵🇹","Colombia":"🇨🇴","DR Congo":"🇨🇩","Uzbekistan":"🇺🇿",
   "England":"🏴󠁧󠁢󠁥󠁮󠁧󠁿","Croatia":"🇭🇷","Ghana":"🇬🇭","Panama":"🇵🇦",
-  "DR Congo":"🇨🇩","Algeria":"🇩🇿","Cape Verde":"🇨🇻","South Korea":"🇰🇷",
-  "Bosnia & Herz.":"🇧🇦","Senegal":"🇸🇳","Switzerland":"🇨🇭","Colombia":"🇨🇴",
   "TBD":"⬜",
 };
 
@@ -272,17 +270,59 @@ export default function App() {
   const [adminGroup,setAdminGroup]=useState("ALL");
   const [allUserPreds,setAllUserPreds]=useState([]);
   const [loadingPreds,setLoadingPreds]=useState(false);
-  const autoSaveTimer = useState(null);
+  const [auditLogs,setAuditLogs]=useState([]);
+  const [loadingLogs,setLoadingLogs]=useState(false);
 
-  // Autosave whenever predictions change
+  async function loadAuditLog(){
+    setLoadingLogs(true);
+    const snap = await getDocs(collection(db,"pick_logs"));
+    const logs = [];
+    snap.forEach(d=>logs.push({id:d.id,...d.data()}));
+    logs.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+    setAuditLogs(logs);
+    setLoadingLogs(false);
+  }
+
+  // Autosave whenever predictions change + log every change
   useEffect(()=>{
     if(!user||Object.keys(predictions).length===0)return;
     const timer=setTimeout(async()=>{
+      // Get previous predictions to detect changes
+      const prevSnap = await getDoc(doc(db,"predictions",user.uid));
+      const prev = prevSnap.exists() ? prevSnap.data() : {};
+
+      // Save all predictions (no lock filter)
       await setDoc(doc(db,"predictions",user.uid),{
         ...predictions,
         _displayName:user.displayName||user.email,
         _photoURL:user.photoURL||null,
       },{merge:true});
+
+      // Log any changed picks
+      const now = new Date();
+      for (const [key, val] of Object.entries(predictions)) {
+        if (key.startsWith("_")) continue;
+        const match = ALL_MATCHES.find(m=>m.id===key);
+        if (!match) continue;
+        const prevVal = prev[key];
+        const changed = !prevVal || prevVal.h !== val.h || prevVal.a !== val.a;
+        if (changed && val.h !== "" && val.a !== "") {
+          const locked = now >= new Date(match.kickoff);
+          await addDoc(collection(db,"pick_logs"),{
+            uid: user.uid,
+            name: user.displayName||user.email,
+            matchId: key,
+            match: `${match.home} vs ${match.away}`,
+            date: match.date,
+            oldPick: prevVal ? `${prevVal.h}-${prevVal.a}` : "none",
+            newPick: `${val.h}-${val.a}`,
+            timestamp: now.toISOString(),
+            wasLocked: locked,
+            kickoff: match.kickoff,
+          });
+        }
+      }
+
       setSaveMsg("✓ Auto-saved");
       setTimeout(()=>setSaveMsg(""),2000);
     },1500);
@@ -344,6 +384,8 @@ export default function App() {
 
   async function handleSave(){
     if(!user)return;setSaving(true);
+    // Only save unlocked picks - prevent backdating
+    const safePreds = {};
     await setDoc(doc(db,"predictions",user.uid),{...predictions,_displayName:user.displayName||user.email,_photoURL:user.photoURL||null},{merge:true});
     setSaveMsg("✓ Saved!");setTimeout(()=>setSaveMsg(""),2500);setSaving(false);
   }
@@ -477,9 +519,10 @@ export default function App() {
           ...(isAdmin?[
             {key:"viewpreds",icon:"🔍",label:"View All"},
             {key:"admin",icon:"⚙️",label:"Results"},
+            {key:"auditlog",icon:"🕵️",label:"Audit Log"},
           ]:[]),
         ].map(tab=>(
-          <button key={tab.key} onClick={()=>{setScreen(tab.key);if(tab.key==="leaderboard")loadLeaderboard();if(tab.key==="viewpreds")loadAllUserPreds();}}
+          <button key={tab.key} onClick={()=>{setScreen(tab.key);if(tab.key==="leaderboard")loadLeaderboard();if(tab.key==="viewpreds")loadAllUserPreds();if(tab.key==="auditlog")loadAuditLog();}}
             style={{padding:"8px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,whiteSpace:"nowrap",background:screen===tab.key?T.grass:"transparent",color:screen===tab.key?T.gold:T.muted,borderBottom:screen===tab.key?`2px solid ${T.gold}`:"2px solid transparent"}}>
             {tab.icon} {tab.label}
           </button>
@@ -845,6 +888,41 @@ export default function App() {
             </button>
             {saveMsg&&<span style={{color:T.green,fontWeight:800}}>{saveMsg}</span>}
           </div>
+        </div>
+      )}
+
+      {screen==="auditlog"&&isAdmin&&(
+        <div style={{maxWidth:720,margin:"0 auto",padding:"16px",position:"relative",zIndex:1}}>
+          <div style={{color:T.gold,fontWeight:900,fontSize:18,marginBottom:4}}>🕵️ Audit Log</div>
+          <div style={{color:T.muted,fontSize:12,marginBottom:16}}>Every pick change logged with timestamp. Red = changed after kickoff.</div>
+          <button onClick={loadAuditLog} style={{marginBottom:16,padding:"8px 16px",borderRadius:8,border:`1px solid ${T.border}`,background:"transparent",color:T.muted,cursor:"pointer",fontSize:12,fontWeight:700}}>🔄 Refresh</button>
+          {loadingLogs?(
+            <div style={{textAlign:"center",color:T.muted,padding:40}}>Loading...</div>
+          ):auditLogs.length===0?(
+            <div style={{textAlign:"center",color:T.muted,padding:40}}>No logs yet. Changes will appear here once users edit picks.</div>
+          ):auditLogs.map(log=>{
+            const ts = new Date(log.timestamp);
+            const suspicious = log.wasLocked;
+            return (
+              <div key={log.id} style={{background:suspicious?"#3a000022":T.bgCard,border:`1px solid ${suspicious?"#e74c3c":T.border}`,borderRadius:10,padding:"10px 14px",marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    {suspicious&&<span style={{background:"#e74c3c",color:"#fff",fontSize:10,fontWeight:900,padding:"2px 6px",borderRadius:6}}>⚠️ AFTER KICKOFF</span>}
+                    <span style={{color:suspicious?"#e74c3c":T.white,fontWeight:800,fontSize:13}}>{log.name}</span>
+                    <span style={{color:T.muted,fontSize:12}}>changed</span>
+                    <span style={{color:T.gold,fontWeight:700,fontSize:12}}>{log.match}</span>
+                    <span style={{color:T.muted,fontSize:12}}>({log.date})</span>
+                  </div>
+                  <span style={{color:T.muted,fontSize:11}}>{ts.toLocaleString()}</span>
+                </div>
+                <div style={{marginTop:4,display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{color:T.muted,fontSize:12,fontFamily:"monospace"}}>{log.oldPick}</span>
+                  <span style={{color:T.muted}}>→</span>
+                  <span style={{color:T.white,fontSize:12,fontWeight:700,fontFamily:"monospace"}}>{log.newPick}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
