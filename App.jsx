@@ -130,8 +130,17 @@ const KNOCKOUT_SLOTS = [
 
 const ALL_MATCHES = [...GROUP_MATCHES, ...KNOCKOUT_SLOTS];
 
+const BLOCKED_UIDS = ["FXxzxIOi98YIVmXfhWhuNKwg6cn2","IZ0zJImSUAUU7YCbCXp8k5UVOLs1"];
+
 function isLocked(match) {
-  return new Date() >= new Date(match.kickoff);
+  const now = new Date();
+  if (now >= new Date(match.kickoff)) return true;
+  // Lock if any later match has already kicked off (anticheat)
+  const matchTime = new Date(match.kickoff);
+  return ALL_MATCHES.some(m => {
+    const t = new Date(m.kickoff);
+    return t > matchTime && now >= t;
+  });
 }
 
 const FLAGS = {
@@ -332,13 +341,21 @@ export default function App() {
 
       setSaveMsg("✓ Auto-saved");
       setTimeout(()=>setSaveMsg(""),2000);
-    },1500);
+    },300);
     return ()=>clearTimeout(timer);
   },[predictions]);
 
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async u=>{
-      setUser(u);setAuthLoading(false);
+      setAuthLoading(false);
+      if(u && BLOCKED_UIDS.includes(u.uid)){
+        // Blocked user — sign them out immediately
+        await signOut(auth);
+        setUser(null);
+        alert("Your account no longer has access to this app.");
+        return;
+      }
+      setUser(u);
       if(u){
         // Auto-grant admin to Daniel's account, no password needed
         if(u.email==="danielzalles89@gmail.com"){
@@ -363,6 +380,7 @@ export default function App() {
     const snap=await getDocs(collection(db,"predictions"));
     const users=[];
     snap.forEach(d=>{
+      if(BLOCKED_UIDS.includes(d.id)) return;
       const p=d.data();
       let total=0;
       for(const m of ALL_MATCHES)total+=calcScore(p[m.id]||{},cur[m.id]||{});
@@ -382,6 +400,7 @@ export default function App() {
     const snap=await getDocs(collection(db,"predictions"));
     const users=[];
     snap.forEach(d=>{
+      if(BLOCKED_UIDS.includes(d.id)) return;
       const p=d.data();
       users.push({uid:d.id,name:p._displayName||d.id,photo:p._photoURL||null,preds:p});
     });
