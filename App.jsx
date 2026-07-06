@@ -112,14 +112,14 @@ const KNOCKOUT_SLOTS = [
   { id:"R32-15", stage:"r32", home:"Argentina",    away:"Cape Verde",    date:"Jul 3",  kickoff:"2026-07-03T18:00:00-04:00" }, // 6pm ET
   { id:"R32-16", stage:"r32", home:"Colombia",     away:"Ghana",         date:"Jul 3",  kickoff:"2026-07-03T21:30:00-04:00" }, // 9:30pm ET
   // Round of 16
-  { id:"R16-01", stage:"r16", home:"Canada",     away:"Morocco",   date:"Jul 4",  kickoff:"2026-07-04T17:00:00-04:00" },
-  { id:"R16-02", stage:"r16", home:"Paraguay",   away:"France",    date:"Jul 4",  kickoff:"2026-07-04T21:00:00-04:00" },
-  { id:"R16-03", stage:"r16", home:"Brazil",     away:"Norway",    date:"Jul 5",  kickoff:"2026-07-05T20:00:00-04:00" },
-  { id:"R16-04", stage:"r16", home:"Mexico",     away:"England",   date:"Jul 5",  kickoff:"2026-07-06T00:00:00-04:00" },
-  { id:"R16-05", stage:"r16", home:"Portugal",   away:"Spain",     date:"Jul 6",  kickoff:"2026-07-06T19:00:00-04:00" },
-  { id:"R16-06", stage:"r16", home:"USA",        away:"Belgium",   date:"Jul 6",  kickoff:"2026-07-07T00:00:00-04:00" },
-  { id:"R16-07", stage:"r16", home:"Argentina",  away:"Egypt",     date:"Jul 7",  kickoff:"2026-07-07T16:00:00-04:00" },
-  { id:"R16-08", stage:"r16", home:"Switzerland",away:"Colombia",  date:"Jul 7",  kickoff:"2026-07-07T20:00:00-04:00" },
+  { id:"R16-01", stage:"r16", home:"Canada",      away:"Morocco",    date:"Jul 4",  kickoff:"2026-07-04T17:00:00-04:00" }, // 1pm ET
+  { id:"R16-02", stage:"r16", home:"Paraguay",    away:"France",     date:"Jul 4",  kickoff:"2026-07-04T21:00:00-04:00" }, // 5pm ET
+  { id:"R16-03", stage:"r16", home:"Brazil",      away:"Norway",     date:"Jul 5",  kickoff:"2026-07-05T20:00:00-04:00" }, // 4pm ET
+  { id:"R16-04", stage:"r16", home:"Mexico",      away:"England",    date:"Jul 5",  kickoff:"2026-07-06T00:00:00-04:00" }, // 8pm ET
+  { id:"R16-05", stage:"r16", home:"Spain",       away:"Portugal",   date:"Jul 6",  kickoff:"2026-07-06T15:00:00-04:00" }, // 3pm ET ✅
+  { id:"R16-06", stage:"r16", home:"USA",         away:"Belgium",    date:"Jul 6",  kickoff:"2026-07-07T00:00:00-04:00" }, // 8pm ET
+  { id:"R16-07", stage:"r16", home:"Egypt",       away:"Argentina",  date:"Jul 7",  kickoff:"2026-07-07T16:00:00-04:00" }, // 12pm ET
+  { id:"R16-08", stage:"r16", home:"Switzerland", away:"Colombia",   date:"Jul 7",  kickoff:"2026-07-07T20:00:00-04:00" }, // 4pm ET
   // Quarter-Finals
   ...Array.from({length:4},(_,i)=>({ id:`QF-${String(i+1).padStart(2,"0")}`, stage:"qf", home:"TBD", away:"TBD", date:"Jul 9 – 11", kickoff:"2026-07-09T19:00:00Z" })),
   // Semi-Finals
@@ -288,6 +288,8 @@ export default function App() {
   const [loadingPreds,setLoadingPreds]=useState(false);
   const [auditLogs,setAuditLogs]=useState([]);
   const [loadingLogs,setLoadingLogs]=useState(false);
+  const [statsData,setStatsData]=useState([]);
+  const [loadingStats,setLoadingStats]=useState(false);
 
   async function loadAuditLog(){
     setLoadingLogs(true);
@@ -297,6 +299,70 @@ export default function App() {
     logs.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
     setAuditLogs(logs);
     setLoadingLogs(false);
+  }
+
+  async function loadStats(){
+    setLoadingStats(true);
+    const aSnap = await getDoc(doc(db,"actuals","results"));
+    const cur = aSnap.exists() ? aSnap.data() : {};
+    const snap = await getDocs(collection(db,"predictions"));
+    const players = [];
+
+    snap.forEach(d=>{
+      if(BLOCKED_UIDS.includes(d.id)) return;
+      const p = d.data();
+      let exact=0, correct=0, wrong=0, noPick=0;
+      let totalPts=0;
+      const groupStats = {};
+      let streak=0, bestStreak=0, curStreak=0;
+      const matchResults = [];
+
+      for(const m of ALL_MATCHES){
+        const actual = cur[m.id];
+        const hasActual = actual && actual.h!=="" && actual.a!=="";
+        const pred = p[m.id];
+        const hasPred = pred && pred.h!=="" && pred.a!=="";
+        if(!hasActual) continue;
+        if(!hasPred){ noPick++; curStreak=0; continue; }
+
+        const pts = calcScore(pred, actual);
+        const ph=Number(pred.h),pa=Number(pred.a),ah=Number(actual.h),aa=Number(actual.a);
+        const isExact = ph===ah && pa===aa;
+        const pw=ph>pa?"h":ph<pa?"a":"d", aw=ah>aa?"h":ah<aa?"a":"d";
+        const isCorrect = pw===aw;
+
+        totalPts += pts;
+        const grp = m.group || m.stage || "KO";
+        if(!groupStats[grp]) groupStats[grp]={pts:0,exact:0,correct:0};
+        groupStats[grp].pts += pts;
+
+        if(isExact){ exact++; correct++; curStreak++; groupStats[grp].exact++; groupStats[grp].correct++; }
+        else if(isCorrect){ correct++; curStreak++; groupStats[grp].correct++; }
+        else{ wrong++; curStreak=0; }
+
+        bestStreak = Math.max(bestStreak, curStreak);
+        matchResults.push({matchId:m.id,pts,isExact,isCorrect,home:m.home,away:m.away,pred,actual});
+      }
+
+      const totalPredicted = exact+correct+wrong;
+      // Best group
+      const bestGroup = Object.entries(groupStats).sort((a,b)=>b[1].pts-a[1].pts)[0];
+      // Avg goals predicted
+      const allPicks = Object.entries(p).filter(([k])=>k.startsWith("G")||k.startsWith("R"));
+      const avgGoals = allPicks.length>0 ? (allPicks.reduce((s,[,v])=>s+(Number(v.h||0)+Number(v.a||0)),0)/allPicks.length).toFixed(1) : 0;
+
+      players.push({
+        uid:d.id, name:p._displayName||d.id, photo:p._photoURL||null,
+        totalPts, exact, correct: correct-exact, wrong, noPick,
+        totalPredicted, hitRate: totalPredicted>0?Math.round((correct/totalPredicted)*100):0,
+        bestStreak, avgGoals, bestGroup: bestGroup?bestGroup[0]:"—",
+        groupStats, champion: p._champion||null,
+      });
+    });
+
+    players.sort((a,b)=>b.totalPts-a.totalPts);
+    setStatsData(players);
+    setLoadingStats(false);
   }
 
   // Autosave whenever predictions change + log every change
@@ -542,13 +608,14 @@ export default function App() {
         {[
           {key:"predictions",icon:"📋",label:"Predictions"},
           {key:"leaderboard",icon:"🏅",label:"Leaderboard"},
+          {key:"stats",icon:"📊",label:"Stats"},
           ...(isAdmin?[
             {key:"viewpreds",icon:"🔍",label:"View All"},
             {key:"admin",icon:"⚙️",label:"Results"},
             {key:"auditlog",icon:"🕵️",label:"Audit Log"},
           ]:[]),
         ].map(tab=>(
-          <button key={tab.key} onClick={()=>{setScreen(tab.key);if(tab.key==="leaderboard")loadLeaderboard();if(tab.key==="viewpreds")loadAllUserPreds();if(tab.key==="auditlog")loadAuditLog();}}
+          <button key={tab.key} onClick={()=>{setScreen(tab.key);if(tab.key==="leaderboard")loadLeaderboard();if(tab.key==="viewpreds")loadAllUserPreds();if(tab.key==="auditlog")loadAuditLog();if(tab.key==="stats")loadStats();}}
             style={{padding:"8px 18px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,whiteSpace:"nowrap",background:screen===tab.key?T.grass:"transparent",color:screen===tab.key?T.gold:T.muted,borderBottom:screen===tab.key?`2px solid ${T.gold}`:"2px solid transparent"}}>
             {tab.icon} {tab.label}
           </button>
@@ -948,6 +1015,108 @@ export default function App() {
             </button>
             {saveMsg&&<span style={{color:T.green,fontWeight:800}}>{saveMsg}</span>}
           </div>
+        </div>
+      )}
+
+      {screen==="stats"&&(
+        <div style={{maxWidth:720,margin:"0 auto",padding:"16px",position:"relative",zIndex:1}}>
+          <div style={{color:T.gold,fontWeight:900,fontSize:18,marginBottom:4}}>📊 Statistics</div>
+          <div style={{color:T.muted,fontSize:12,marginBottom:16}}>Based on all matches with confirmed results.</div>
+          <button onClick={loadStats} style={{marginBottom:16,padding:"8px 16px",borderRadius:8,border:`1px solid ${T.border}`,background:"transparent",color:T.muted,cursor:"pointer",fontSize:12,fontWeight:700}}>🔄 Refresh</button>
+
+          {loadingStats?(
+            <div style={{textAlign:"center",color:T.muted,padding:40}}>Loading...</div>
+          ):statsData.length===0?(
+            <div style={{textAlign:"center",color:T.muted,padding:40}}>No data yet.</div>
+          ):(<>
+
+            {/* Summary table */}
+            <div style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:14,marginBottom:16,overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead>
+                  <tr style={{color:T.gold,fontWeight:800}}>
+                    <td style={{padding:"6px 8px"}}>Jugador</td>
+                    <td style={{padding:"6px 4px",textAlign:"center"}}>Pts</td>
+                    <td style={{padding:"6px 4px",textAlign:"center"}}>⭐ Exact</td>
+                    <td style={{padding:"6px 4px",textAlign:"center"}}>✅ Correct</td>
+                    <td style={{padding:"6px 4px",textAlign:"center"}}>❌ Wrong</td>
+                    <td style={{padding:"6px 4px",textAlign:"center"}}>Hit%</td>
+                    <td style={{padding:"6px 4px",textAlign:"center"}}>🔥 Streak</td>
+                    <td style={{padding:"6px 4px",textAlign:"center"}}>⚽ Avg</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statsData.map((p,i)=>(
+                    <tr key={p.uid} style={{borderTop:`1px solid ${T.border}33`,background:i===0?"#f5c84211":"transparent"}}>
+                      <td style={{padding:"8px",color:T.white,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+                        {i===0?"🥇":i===1?"🥈":i===2?"🥉":`#${i+1}`}
+                        {p.photo&&<img src={p.photo} style={{width:20,height:20,borderRadius:"50%"}} alt=""/>}
+                        {p.name.split(" ")[0]}
+                      </td>
+                      <td style={{padding:"8px 4px",textAlign:"center",color:T.gold,fontWeight:900}}>{p.totalPts}</td>
+                      <td style={{padding:"8px 4px",textAlign:"center",color:"#f5c842"}}>{p.exact}</td>
+                      <td style={{padding:"8px 4px",textAlign:"center",color:"#2ecc71"}}>{p.correct}</td>
+                      <td style={{padding:"8px 4px",textAlign:"center",color:"#e74c3c"}}>{p.wrong}</td>
+                      <td style={{padding:"8px 4px",textAlign:"center",color:T.white}}>{p.hitRate}%</td>
+                      <td style={{padding:"8px 4px",textAlign:"center",color:"#f39c12"}}>{p.bestStreak}</td>
+                      <td style={{padding:"8px 4px",textAlign:"center",color:T.muted}}>{p.avgGoals}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Individual player cards */}
+            {statsData.map((p,i)=>(
+              <div key={p.uid} style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:14,marginBottom:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                  {p.photo&&<img src={p.photo} style={{width:36,height:36,borderRadius:"50%"}} alt=""/>}
+                  <div>
+                    <div style={{color:T.white,fontWeight:900,fontSize:15}}>{p.name}</div>
+                    <div style={{color:T.muted,fontSize:11}}>{p.totalPredicted} predictions made · {p.noPick} no picks</div>
+                  </div>
+                  <div style={{marginLeft:"auto",textAlign:"right"}}>
+                    <div style={{color:T.gold,fontWeight:900,fontSize:20}}>{p.totalPts} pts</div>
+                    <div style={{color:T.muted,fontSize:11}}>#{i+1} overall</div>
+                  </div>
+                </div>
+
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+                  {[
+                    {label:"⭐ Exact scores",val:p.exact,color:"#f5c842"},
+                    {label:"✅ Correct result",val:p.correct,color:"#2ecc71"},
+                    {label:"❌ Wrong",val:p.wrong,color:"#e74c3c"},
+                    {label:"🎯 Hit rate",val:`${p.hitRate}%`,color:T.white},
+                  ].map(s=>(
+                    <div key={s.label} style={{background:T.bgDeep,borderRadius:8,padding:"8px",textAlign:"center"}}>
+                      <div style={{color:s.color,fontWeight:900,fontSize:18}}>{s.val}</div>
+                      <div style={{color:T.muted,fontSize:10}}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                  {[
+                    {label:"🔥 Best streak",val:p.bestStreak,color:"#f39c12"},
+                    {label:"⚽ Avg goals/match",val:p.avgGoals,color:T.muted},
+                    {label:"🏆 Best group",val:p.bestGroup,color:T.gold},
+                  ].map(s=>(
+                    <div key={s.label} style={{background:T.bgDeep,borderRadius:8,padding:"8px",textAlign:"center"}}>
+                      <div style={{color:s.color,fontWeight:900,fontSize:16}}>{s.val}</div>
+                      <div style={{color:T.muted,fontSize:10}}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {p.champion&&(
+                  <div style={{marginTop:10,padding:"6px 10px",background:"#f5c84211",borderRadius:8,display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{color:T.gold,fontSize:12}}>🏆 Champion pick:</span>
+                    <span style={{color:T.white,fontWeight:700,fontSize:12}}>{FLAGS[p.champion]||""} {p.champion}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </>)}
         </div>
       )}
 
