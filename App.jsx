@@ -111,15 +111,18 @@ const KNOCKOUT_SLOTS = [
   { id:"R32-14", stage:"r32", home:"Australia",    away:"Egypt",         date:"Jul 3",  kickoff:"2026-07-03T14:00:00-04:00" }, // 2pm ET
   { id:"R32-15", stage:"r32", home:"Argentina",    away:"Cape Verde",    date:"Jul 3",  kickoff:"2026-07-03T18:00:00-04:00" }, // 6pm ET
   { id:"R32-16", stage:"r32", home:"Colombia",     away:"Ghana",         date:"Jul 3",  kickoff:"2026-07-03T21:30:00-04:00" }, // 9:30pm ET
-  // Round of 16
-  { id:"R16-01", stage:"r16", home:"Canada",      away:"Morocco",    date:"Jul 4",  kickoff:"2026-07-04T17:00:00-04:00" }, // 1pm ET
-  { id:"R16-02", stage:"r16", home:"Paraguay",    away:"France",     date:"Jul 4",  kickoff:"2026-07-04T21:00:00-04:00" }, // 5pm ET
-  { id:"R16-03", stage:"r16", home:"Brazil",      away:"Norway",     date:"Jul 5",  kickoff:"2026-07-05T20:00:00-04:00" }, // 4pm ET
-  { id:"R16-04", stage:"r16", home:"Mexico",      away:"England",    date:"Jul 5",  kickoff:"2026-07-06T00:00:00-04:00" }, // 8pm ET
-  { id:"R16-05", stage:"r16", home:"Spain",       away:"Portugal",   date:"Jul 6",  kickoff:"2026-07-06T15:00:00-04:00" }, // 3pm ET ✅
-  { id:"R16-06", stage:"r16", home:"USA",         away:"Belgium",    date:"Jul 6",  kickoff:"2026-07-07T00:00:00-04:00" }, // 8pm ET
-  { id:"R16-07", stage:"r16", home:"Egypt",       away:"Argentina",  date:"Jul 7",  kickoff:"2026-07-07T16:00:00-04:00" }, // 12pm ET
-  { id:"R16-08", stage:"r16", home:"Switzerland", away:"Colombia",   date:"Jul 7",  kickoff:"2026-07-07T20:00:00-04:00" }, // 4pm ET
+
+  // Round of 16 — CORREGIDO (horarios ajustados a la hora ET real; home/away revertido
+  // a como se guardó originalmente en pick_logs para Portugal-España y Argentina-Egipto)
+  { id:"R16-01", stage:"r16", home:"Canada",      away:"Morocco",    date:"Jul 4",  kickoff:"2026-07-04T13:00:00-04:00" }, // 1pm ET
+  { id:"R16-02", stage:"r16", home:"Paraguay",    away:"France",     date:"Jul 4",  kickoff:"2026-07-04T17:00:00-04:00" }, // 5pm ET
+  { id:"R16-03", stage:"r16", home:"Brazil",      away:"Norway",     date:"Jul 5",  kickoff:"2026-07-05T16:00:00-04:00" }, // 4pm ET
+  { id:"R16-04", stage:"r16", home:"Mexico",      away:"England",    date:"Jul 5",  kickoff:"2026-07-05T20:00:00-04:00" }, // 8pm ET
+  { id:"R16-05", stage:"r16", home:"Portugal",    away:"Spain",      date:"Jul 6",  kickoff:"2026-07-06T15:00:00-04:00" }, // 3pm ET ✅
+  { id:"R16-06", stage:"r16", home:"USA",         away:"Belgium",    date:"Jul 6",  kickoff:"2026-07-06T20:00:00-04:00" }, // 8pm ET
+  { id:"R16-07", stage:"r16", home:"Argentina",   away:"Egypt",      date:"Jul 7",  kickoff:"2026-07-07T12:00:00-04:00" }, // 12pm ET
+  { id:"R16-08", stage:"r16", home:"Switzerland", away:"Colombia",   date:"Jul 7",  kickoff:"2026-07-07T16:00:00-04:00" }, // 4pm ET
+
   // Quarter-Finals
   ...Array.from({length:4},(_,i)=>({ id:`QF-${String(i+1).padStart(2,"0")}`, stage:"qf", home:"TBD", away:"TBD", date:"Jul 9 – 11", kickoff:"2026-07-09T19:00:00Z" })),
   // Semi-Finals
@@ -489,8 +492,9 @@ export default function App() {
   }
 
   function exportCSV() {
-    // Use ORIGINAL calendar (what users saw when making picks)
-    const ORIGINAL_MATCHES = GROUP_MATCHES;
+    // Use ALL matches (group stage + knockout rounds) so the export always
+    // matches the full audit log, including R32/R16/QF/SF/Final
+    const ORIGINAL_MATCHES = ALL_MATCHES;
 
     const rows = [];
     const userNames = allUserPreds.map(u => u.name);
