@@ -183,7 +183,8 @@ const GROUPS = {
 
 const ADMIN_PW = "wc2026admin";
 const STAGE_LABELS = { group:"Group Stage", r32:"Round of 32", r16:"Round of 16", qf:"Quarter-Finals", sf:"Semi-Finals", "3rd":"3rd Place", final:"Final" };
-const STAGE_ORDER = ["group","r32","r16"];
+const STAGE_ORDER = ["group","r32","r16","qf","sf","3rd","final"];
+const STAGE_TAB_LABELS = { group:"⚽ Grupos", r32:"⚔️ R32", r16:"🏆 R16", qf:"🔥 Cuartos", sf:"⭐ Semis", "3rd":"🥉 3er Lugar", final:"👑 Final" };
 const ALL_32_TEAMS = ["South Africa","Canada","Brazil","Japan","Germany","Paraguay","Netherlands","Morocco","Ivory Coast","Norway","France","Sweden","Mexico","Ecuador","England","DR Congo","Belgium","Senegal","USA","Bosnia & Herz.","Spain","Austria","Portugal","Croatia","Switzerland","Algeria","Australia","Egypt","Argentina","Cape Verde","Colombia","Ghana"];
 const CHAMPION_BONUS_PTS = 10;
 
@@ -638,7 +639,7 @@ export default function App() {
               <button key={s} onClick={()=>setActiveStage(s)}
                 style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:800,fontSize:12,
                   background:activeStage===s?T.grass:"transparent",color:activeStage===s?T.gold:T.muted}}>
-                {s==="group"?"⚽ Grupos":s==="r32"?"⚔️ R32":"🏆 R16"}
+                {STAGE_TAB_LABELS[s]}
               </button>
             ))}
           </div>
@@ -719,7 +720,20 @@ export default function App() {
             </>
           )}
 
-
+          {["qf","sf","3rd","final"].includes(activeStage)&&(
+            <>
+              <div style={{background:"#0a1a10",border:`1px solid ${T.border}`,borderRadius:10,padding:"8px 14px",marginBottom:14,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:14}}>🔒</span>
+                <span style={{color:T.muted,fontSize:12}}>Predictions lock at each match's kickoff time</span>
+              </div>
+              {KNOCKOUT_SLOTS.filter(m=>m.stage===activeStage).length===0?(
+                <div style={{textAlign:"center",color:T.muted,padding:30}}>Aún no hay partidos definidos para esta etapa.</div>
+              ):KNOCKOUT_SLOTS.filter(m=>m.stage===activeStage).map(m=>(
+                <MatchCard key={m.id} match={m} pred={predictions[m.id]} actual={actuals[m.id]}
+                  onChange={val=>setPredictions(p=>({...p,[m.id]:{...p[m.id],...val}}))} adminMode={false}/>
+              ))}
+            </>
+          )}
 
           <div style={{marginTop:20,display:"flex",alignItems:"center",gap:12,position:"sticky",bottom:12}}>
             <button onClick={handleSave} disabled={saving} style={{flex:1,padding:"14px",fontSize:15,fontWeight:900,background:`linear-gradient(135deg,${T.gold},${T.goldDim})`,color:T.bgDeep,border:"none",borderRadius:12,cursor:"pointer",opacity:saving?0.6:1}}>
@@ -746,7 +760,7 @@ export default function App() {
               <button key={s} onClick={()=>setActiveStage(s)}
                 style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:800,fontSize:12,
                   background:activeStage===s?T.grass:"transparent",color:activeStage===s?T.gold:T.muted}}>
-                {s==="group"?"⚽ Grupos":s==="r32"?"⚔️ R32":"🏆 R16"}
+                {STAGE_TAB_LABELS[s]}
               </button>
             ))}
           </div>
@@ -923,7 +937,7 @@ export default function App() {
               <button key={s} onClick={()=>setAdminStage(s)}
                 style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:800,fontSize:12,
                   background:adminStage===s?"#2a1a00":"transparent",color:adminStage===s?T.gold:T.muted}}>
-                {s==="group"?"⚽ Grupos":s==="r32"?"⚔️ R32":"🏆 R16"}
+                {STAGE_TAB_LABELS[s]}
               </button>
             ))}
           </div>
@@ -999,6 +1013,27 @@ export default function App() {
           {adminStage==="r16"&&(
             <>
               {KNOCKOUT_SLOTS.filter(m=>m.stage==="r16").map(m=>(
+                <div key={m.id} style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}>
+                  <div style={{color:T.muted,fontSize:10,marginBottom:6}}>{m.date}</div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flex:1}}>
+                      <span style={{fontSize:18}}>{FLAGS[m.home]||"🏳️"}</span>
+                      <span style={{color:T.white,fontSize:13,fontWeight:600}}>{m.home}</span>
+                    </div>
+                    <ScoreInput h={actuals[m.id]?.h??""} a={actuals[m.id]?.a??""} onChange={val=>setActuals(p=>({...p,[m.id]:{...p[m.id],...val}}))} disabled={false}/>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flex:1,justifyContent:"flex-end"}}>
+                      <span style={{color:T.white,fontSize:13,fontWeight:600}}>{m.away}</span>
+                      <span style={{fontSize:18}}>{FLAGS[m.away]||"🏳️"}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {["qf","sf","3rd","final"].includes(adminStage)&&(
+            <>
+              {KNOCKOUT_SLOTS.filter(m=>m.stage===adminStage).map(m=>(
                 <div key={m.id} style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}>
                   <div style={{color:T.muted,fontSize:10,marginBottom:6}}>{m.date}</div>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
