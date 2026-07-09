@@ -95,7 +95,7 @@ const GROUP_MATCHES = [
 
 const KNOCKOUT_SLOTS = [
   // Round of 32 - all kickoffs in EST
-  { id:"R32-01", stage:"r32", home:"South Africa", away:"Canada",        date:"Jun 28", kickoff:"2026-06-28T15:00:00-05:00" }, // 3pm ET
+  { id:"R32-01", stage:"r32", home:"South Africa", away:"Canada",        date:"Jun 28", kickoff:"2026-06-28T15:00:00-04:00" }, // 3pm ET (corregido: era -05:00/EST, debía ser -04:00/EDT)
   { id:"R32-02", stage:"r32", home:"Brazil",       away:"Japan",         date:"Jun 29", kickoff:"2026-06-29T13:00:00-04:00" }, // 1pm ET
   { id:"R32-03", stage:"r32", home:"Germany",      away:"Paraguay",      date:"Jun 29", kickoff:"2026-06-29T16:30:00-04:00" }, // 4:30pm ET
   { id:"R32-04", stage:"r32", home:"Netherlands",  away:"Morocco",       date:"Jun 29", kickoff:"2026-06-29T21:00:00-04:00" }, // 9pm ET
@@ -112,20 +112,24 @@ const KNOCKOUT_SLOTS = [
   { id:"R32-15", stage:"r32", home:"Argentina",    away:"Cape Verde",    date:"Jul 3",  kickoff:"2026-07-03T18:00:00-04:00" }, // 6pm ET
   { id:"R32-16", stage:"r32", home:"Colombia",     away:"Ghana",         date:"Jul 3",  kickoff:"2026-07-03T21:30:00-04:00" }, // 9:30pm ET
 
-  // Round of 16 — CORREGIDO (horarios ajustados a la hora ET real; home/away revertido
-  // a como se guardó originalmente en pick_logs para Portugal-España y Argentina-Egipto)
+  // Round of 16 — horarios corregidos a la hora ET real; home/away revertido
+  // a como se guardó originalmente en pick_logs para Portugal-España y Argentina-Egipto
   { id:"R16-01", stage:"r16", home:"Canada",      away:"Morocco",    date:"Jul 4",  kickoff:"2026-07-04T13:00:00-04:00" }, // 1pm ET
   { id:"R16-02", stage:"r16", home:"Paraguay",    away:"France",     date:"Jul 4",  kickoff:"2026-07-04T17:00:00-04:00" }, // 5pm ET
   { id:"R16-03", stage:"r16", home:"Brazil",      away:"Norway",     date:"Jul 5",  kickoff:"2026-07-05T16:00:00-04:00" }, // 4pm ET
   { id:"R16-04", stage:"r16", home:"Mexico",      away:"England",    date:"Jul 5",  kickoff:"2026-07-05T20:00:00-04:00" }, // 8pm ET
-  { id:"R16-05", stage:"r16", home:"Portugal",    away:"Spain",      date:"Jul 6",  kickoff:"2026-07-06T15:00:00-04:00" }, // 3pm ET ✅
+  { id:"R16-05", stage:"r16", home:"Portugal",    away:"Spain",      date:"Jul 6",  kickoff:"2026-07-06T15:00:00-04:00" }, // 3pm ET
   { id:"R16-06", stage:"r16", home:"USA",         away:"Belgium",    date:"Jul 6",  kickoff:"2026-07-06T20:00:00-04:00" }, // 8pm ET
   { id:"R16-07", stage:"r16", home:"Argentina",   away:"Egypt",      date:"Jul 7",  kickoff:"2026-07-07T12:00:00-04:00" }, // 12pm ET
   { id:"R16-08", stage:"r16", home:"Switzerland", away:"Colombia",   date:"Jul 7",  kickoff:"2026-07-07T16:00:00-04:00" }, // 4pm ET
 
-  // Quarter-Finals
-  ...Array.from({length:4},(_,i)=>({ id:`QF-${String(i+1).padStart(2,"0")}`, stage:"qf", home:"TBD", away:"TBD", date:"Jul 9 – 11", kickoff:"2026-07-09T19:00:00Z" })),
-  // Semi-Finals
+  // Quarter-Finals — cruces reales confirmados tras el cierre del Round of 16
+  { id:"QF-01", stage:"qf", home:"France",    away:"Morocco",     date:"Jul 9",  kickoff:"2026-07-09T16:00:00-04:00" }, // 4pm ET — Gillette Stadium, Boston
+  { id:"QF-02", stage:"qf", home:"Spain",     away:"Belgium",     date:"Jul 10", kickoff:"2026-07-10T15:00:00-04:00" }, // 3pm ET — SoFi Stadium, LA
+  { id:"QF-03", stage:"qf", home:"Norway",    away:"England",     date:"Jul 11", kickoff:"2026-07-11T17:00:00-04:00" }, // 5pm ET — Hard Rock Stadium, Miami
+  { id:"QF-04", stage:"qf", home:"Argentina", away:"Switzerland", date:"Jul 11", kickoff:"2026-07-11T21:00:00-04:00" }, // 9pm ET — Kansas City Stadium
+
+  // Semi-Finals y Final — TBD hasta que se completen los Cuartos
   ...Array.from({length:2},(_,i)=>({ id:`SF-${String(i+1).padStart(2,"0")}`, stage:"sf", home:"TBD", away:"TBD", date:"Jul 14 – 15", kickoff:"2026-07-14T19:00:00Z" })),
   { id:"3RD",   stage:"3rd",   home:"TBD", away:"TBD", date:"Jul 18", kickoff:"2026-07-18T19:00:00Z" },
   { id:"FINAL", stage:"final", home:"TBD", away:"TBD", date:"Jul 19", kickoff:"2026-07-19T19:00:00Z" },
