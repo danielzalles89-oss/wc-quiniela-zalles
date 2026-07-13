@@ -129,10 +129,11 @@ const KNOCKOUT_SLOTS = [
   { id:"QF-03", stage:"qf", home:"Norway",    away:"England",     date:"Jul 11", kickoff:"2026-07-11T17:00:00-04:00" }, // 5pm ET — Hard Rock Stadium, Miami
   { id:"QF-04", stage:"qf", home:"Argentina", away:"Switzerland", date:"Jul 11", kickoff:"2026-07-11T21:00:00-04:00" }, // 9pm ET — Kansas City Stadium
 
-  // Semi-Finals y Final — TBD hasta que se completen los Cuartos
-  ...Array.from({length:2},(_,i)=>({ id:`SF-${String(i+1).padStart(2,"0")}`, stage:"sf", home:"TBD", away:"TBD", date:"Jul 14 – 15", kickoff:"2026-07-14T19:00:00Z" })),
-  { id:"3RD",   stage:"3rd",   home:"TBD", away:"TBD", date:"Jul 18", kickoff:"2026-07-18T19:00:00Z" },
-  { id:"FINAL", stage:"final", home:"TBD", away:"TBD", date:"Jul 19", kickoff:"2026-07-19T19:00:00Z" },
+  // Semi-Finals, 3rd Place y Final — ACTUALIZADO con los cruces reales tras el cierre de Cuartos
+  { id:"SF-01", stage:"sf",   home:"France",    away:"Spain",    date:"Jul 14", kickoff:"2026-07-14T15:00:00-04:00" }, // 3pm ET — AT&T Stadium, Dallas
+  { id:"SF-02", stage:"sf",   home:"Argentina", away:"England",  date:"Jul 15", kickoff:"2026-07-15T15:00:00-04:00" }, // 3pm ET — Mercedes-Benz Stadium, Atlanta
+  { id:"3RD",   stage:"3rd",  home:"TBD", away:"TBD", date:"Jul 18", kickoff:"2026-07-18T17:00:00-04:00", homeFrom:{matchId:"SF-01",result:"loser"},  awayFrom:{matchId:"SF-02",result:"loser"} }, // 5pm ET — Hard Rock Stadium, Miami
+  { id:"FINAL", stage:"final",home:"TBD", away:"TBD", date:"Jul 19", kickoff:"2026-07-19T15:00:00-04:00", homeFrom:{matchId:"SF-01",result:"winner"}, awayFrom:{matchId:"SF-02",result:"winner"} }, // 3pm ET — MetLife Stadium, NJ
 ];
 
 const ALL_MATCHES = [...GROUP_MATCHES, ...KNOCKOUT_SLOTS];
@@ -148,6 +149,38 @@ function isLocked(match) {
     const t = new Date(m.kickoff);
     return t > matchTime && now >= t;
   });
+}
+
+// ─── BRACKET AUTO-ADVANCE ────────────────────────────────────────────────────
+// Matches whose teams depend on a previous round's result (e.g. Final, 3rd place)
+// declare homeFrom/awayFrom as {matchId, result:"winner"|"loser"} instead of a
+// hardcoded team name. resolveMatchTeams() fills in the real team automatically
+// once the source match's result is entered in Admin — no code edit needed each round.
+function getWinnerLoser(sourceMatch, actuals){
+  const actual = actuals[sourceMatch.id];
+  if(!actual || actual.h===""||actual.a===""||actual.h==null||actual.a==null) return {winner:null, loser:null};
+  const h=Number(actual.h), a=Number(actual.a);
+  if(isNaN(h)||isNaN(a)||h===a) return {winner:null, loser:null}; // knockout matches can't draw; guard just in case
+  return h>a ? {winner:sourceMatch.home, loser:sourceMatch.away} : {winner:sourceMatch.away, loser:sourceMatch.home};
+}
+
+function resolveMatchTeams(match, actuals){
+  let home = match.home, away = match.away;
+  if(match.homeFrom){
+    const src = ALL_MATCHES.find(m=>m.id===match.homeFrom.matchId);
+    if(src){
+      const {winner,loser} = getWinnerLoser(src, actuals);
+      home = (match.homeFrom.result==="winner" ? winner : loser) || "TBD";
+    }
+  }
+  if(match.awayFrom){
+    const src = ALL_MATCHES.find(m=>m.id===match.awayFrom.matchId);
+    if(src){
+      const {winner,loser} = getWinnerLoser(src, actuals);
+      away = (match.awayFrom.result==="winner" ? winner : loser) || "TBD";
+    }
+  }
+  return (home===match.home && away===match.away) ? match : {...match, home, away};
 }
 
 const FLAGS = {
@@ -301,76 +334,88 @@ export default function App() {
 
   async function loadAuditLog(){
     setLoadingLogs(true);
-    const snap = await getDocs(collection(db,"pick_logs"));
-    const logs = [];
-    snap.forEach(d=>logs.push({id:d.id,...d.data()}));
-    logs.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
-    setAuditLogs(logs);
-    setLoadingLogs(false);
+    try{
+      const snap = await getDocs(collection(db,"pick_logs"));
+      const logs = [];
+      snap.forEach(d=>logs.push({id:d.id,...d.data()}));
+      logs.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+      setAuditLogs(logs);
+    }catch(err){
+      console.error("loadAuditLog failed:",err);
+      alert("Error cargando Audit Log: "+err.message);
+    }finally{
+      setLoadingLogs(false);
+    }
   }
 
   async function loadStats(){
     setLoadingStats(true);
-    const aSnap = await getDoc(doc(db,"actuals","results"));
-    const cur = aSnap.exists() ? aSnap.data() : {};
-    const snap = await getDocs(collection(db,"predictions"));
-    const players = [];
+    try{
+      const aSnap = await getDoc(doc(db,"actuals","results"));
+      const cur = aSnap.exists() ? aSnap.data() : {};
+      const snap = await getDocs(collection(db,"predictions"));
+      const players = [];
 
-    snap.forEach(d=>{
-      if(BLOCKED_UIDS.includes(d.id)) return;
-      const p = d.data();
-      let exact=0, correct=0, wrong=0, noPick=0;
-      let totalPts=0;
-      const groupStats = {};
-      let streak=0, bestStreak=0, curStreak=0;
-      const matchResults = [];
+      snap.forEach(d=>{
+        if(BLOCKED_UIDS.includes(d.id)) return;
+        const p = d.data();
+        let exact=0, correct=0, wrong=0, noPick=0;
+        let totalPts=0;
+        const groupStats = {};
+        let streak=0, bestStreak=0, curStreak=0;
+        const matchResults = [];
 
-      for(const m of ALL_MATCHES){
-        const actual = cur[m.id];
-        const hasActual = actual && actual.h!=="" && actual.a!=="";
-        const pred = p[m.id];
-        const hasPred = pred && pred.h!=="" && pred.a!=="";
-        if(!hasActual) continue;
-        if(!hasPred){ noPick++; curStreak=0; continue; }
+        for(const m of ALL_MATCHES){
+          const actual = cur[m.id];
+          const hasActual = actual && actual.h!=="" && actual.a!=="";
+          const pred = p[m.id];
+          const hasPred = pred && pred.h!=="" && pred.a!=="";
+          if(!hasActual) continue;
+          if(!hasPred){ noPick++; curStreak=0; continue; }
 
-        const pts = calcScore(pred, actual);
-        const ph=Number(pred.h),pa=Number(pred.a),ah=Number(actual.h),aa=Number(actual.a);
-        const isExact = ph===ah && pa===aa;
-        const pw=ph>pa?"h":ph<pa?"a":"d", aw=ah>aa?"h":ah<aa?"a":"d";
-        const isCorrect = pw===aw;
+          const pts = calcScore(pred, actual);
+          const ph=Number(pred.h),pa=Number(pred.a),ah=Number(actual.h),aa=Number(actual.a);
+          const isExact = ph===ah && pa===aa;
+          const pw=ph>pa?"h":ph<pa?"a":"d", aw=ah>aa?"h":ah<aa?"a":"d";
+          const isCorrect = pw===aw;
 
-        totalPts += pts;
-        const grp = m.group || m.stage || "KO";
-        if(!groupStats[grp]) groupStats[grp]={pts:0,exact:0,correct:0};
-        groupStats[grp].pts += pts;
+          totalPts += pts;
+          const grp = m.group || m.stage || "KO";
+          if(!groupStats[grp]) groupStats[grp]={pts:0,exact:0,correct:0};
+          groupStats[grp].pts += pts;
 
-        if(isExact){ exact++; correct++; curStreak++; groupStats[grp].exact++; groupStats[grp].correct++; }
-        else if(isCorrect){ correct++; curStreak++; groupStats[grp].correct++; }
-        else{ wrong++; curStreak=0; }
+          if(isExact){ exact++; correct++; curStreak++; groupStats[grp].exact++; groupStats[grp].correct++; }
+          else if(isCorrect){ correct++; curStreak++; groupStats[grp].correct++; }
+          else{ wrong++; curStreak=0; }
 
-        bestStreak = Math.max(bestStreak, curStreak);
-        matchResults.push({matchId:m.id,pts,isExact,isCorrect,home:m.home,away:m.away,pred,actual});
-      }
+          bestStreak = Math.max(bestStreak, curStreak);
+          matchResults.push({matchId:m.id,pts,isExact,isCorrect,home:m.home,away:m.away,pred,actual});
+        }
 
-      const totalPredicted = exact+correct+wrong;
-      // Best group
-      const bestGroup = Object.entries(groupStats).sort((a,b)=>b[1].pts-a[1].pts)[0];
-      // Avg goals predicted
-      const allPicks = Object.entries(p).filter(([k])=>k.startsWith("G")||k.startsWith("R"));
-      const avgGoals = allPicks.length>0 ? (allPicks.reduce((s,[,v])=>s+(Number(v.h||0)+Number(v.a||0)),0)/allPicks.length).toFixed(1) : 0;
+        const totalPredicted = exact+correct+wrong;
+        // Best group
+        const bestGroup = Object.entries(groupStats).sort((a,b)=>b[1].pts-a[1].pts)[0];
+        // Avg goals predicted
+        const allPicks = Object.entries(p).filter(([k])=>k.startsWith("G")||k.startsWith("R"));
+        const avgGoals = allPicks.length>0 ? (allPicks.reduce((s,[,v])=>s+(Number(v.h||0)+Number(v.a||0)),0)/allPicks.length).toFixed(1) : 0;
 
-      players.push({
-        uid:d.id, name:p._displayName||d.id, photo:p._photoURL||null,
-        totalPts, exact, correct: correct-exact, wrong, noPick,
-        totalPredicted, hitRate: totalPredicted>0?Math.round((correct/totalPredicted)*100):0,
-        bestStreak, avgGoals, bestGroup: bestGroup?bestGroup[0]:"—",
-        groupStats, champion: p._champion||null,
+        players.push({
+          uid:d.id, name:p._displayName||d.id, photo:p._photoURL||null,
+          totalPts, exact, correct: correct-exact, wrong, noPick,
+          totalPredicted, hitRate: totalPredicted>0?Math.round((correct/totalPredicted)*100):0,
+          bestStreak, avgGoals, bestGroup: bestGroup?bestGroup[0]:"—",
+          groupStats, champion: p._champion||null,
+        });
       });
-    });
 
-    players.sort((a,b)=>b.totalPts-a.totalPts);
-    setStatsData(players);
-    setLoadingStats(false);
+      players.sort((a,b)=>b.totalPts-a.totalPts);
+      setStatsData(players);
+    }catch(err){
+      console.error("loadStats failed:",err);
+      alert("Error cargando stats: "+err.message);
+    }finally{
+      setLoadingStats(false);
+    }
   }
 
   // Autosave whenever predictions change + log every change
@@ -392,8 +437,9 @@ export default function App() {
       const now = new Date();
       for (const [key, val] of Object.entries(predictions)) {
         if (key.startsWith("_")) continue;
-        const match = ALL_MATCHES.find(m=>m.id===key);
-        if (!match) continue;
+        const rawMatch = ALL_MATCHES.find(m=>m.id===key);
+        if (!rawMatch) continue;
+        const match = resolveMatchTeams(rawMatch, actuals);
         const prevVal = prev[key];
         const changed = !prevVal || prevVal.h !== val.h || prevVal.a !== val.a;
         if (changed && val.h !== "" && val.a !== "") {
@@ -449,37 +495,50 @@ export default function App() {
 
   async function loadLeaderboard(){
     setLoading(true);
-    const aSnap=await getDoc(doc(db,"actuals","results"));
-    const cur=aSnap.exists()?aSnap.data():{};
-    const snap=await getDocs(collection(db,"predictions"));
-    const users=[];
-    snap.forEach(d=>{
-      if(BLOCKED_UIDS.includes(d.id)) return;
-      const p=d.data();
-      let total=0;
-      for(const m of ALL_MATCHES)total+=calcScore(p[m.id]||{},cur[m.id]||{});
-      // Champion bonus
-      if(p._champion && cur._champion && p._champion===cur._champion) total+=CHAMPION_BONUS_PTS;
-      users.push({uid:d.id,name:p._displayName||d.id,photo:p._photoURL||null,total,champion:p._champion||null});
-    });
-    users.sort((a,b)=>b.total-a.total);
-    setAllUsers(users);setLoading(false);
+    try{
+      const aSnap=await getDoc(doc(db,"actuals","results"));
+      const cur=aSnap.exists()?aSnap.data():{};
+      const snap=await getDocs(collection(db,"predictions"));
+      const users=[];
+      snap.forEach(d=>{
+        if(BLOCKED_UIDS.includes(d.id)) return;
+        const p=d.data();
+        let total=0;
+        for(const m of ALL_MATCHES)total+=calcScore(p[m.id]||{},cur[m.id]||{});
+        // Champion bonus
+        if(p._champion && cur._champion && p._champion===cur._champion) total+=CHAMPION_BONUS_PTS;
+        users.push({uid:d.id,name:p._displayName||d.id,photo:p._photoURL||null,total,champion:p._champion||null});
+      });
+      users.sort((a,b)=>b.total-a.total);
+      setAllUsers(users);
+    }catch(err){
+      console.error("loadLeaderboard failed:",err);
+      alert("Error cargando el leaderboard: "+err.message);
+    }finally{
+      setLoading(false);
+    }
   }
 
   async function loadAllUserPreds(){
     setLoadingPreds(true);
-    // Always reload actuals fresh from Firebase
-    const aSnap = await getDoc(doc(db,"actuals","results"));
-    if(aSnap.exists()) setActuals(aSnap.data());
-    const snap=await getDocs(collection(db,"predictions"));
-    const users=[];
-    snap.forEach(d=>{
-      if(BLOCKED_UIDS.includes(d.id)) return;
-      const p=d.data();
-      users.push({uid:d.id,name:p._displayName||d.id,photo:p._photoURL||null,preds:p});
-    });
-    setAllUserPreds(users);
-    setLoadingPreds(false);
+    try{
+      // Always reload actuals fresh from Firebase
+      const aSnap = await getDoc(doc(db,"actuals","results"));
+      if(aSnap.exists()) setActuals(aSnap.data());
+      const snap=await getDocs(collection(db,"predictions"));
+      const users=[];
+      snap.forEach(d=>{
+        if(BLOCKED_UIDS.includes(d.id)) return;
+        const p=d.data();
+        users.push({uid:d.id,name:p._displayName||d.id,photo:p._photoURL||null,preds:p});
+      });
+      setAllUserPreds(users);
+    }catch(err){
+      console.error("loadAllUserPreds failed:",err);
+      alert("Error cargando View All: "+err.message);
+    }finally{
+      setLoadingPreds(false);
+    }
   }
 
   async function handleSave(){
@@ -492,7 +551,7 @@ export default function App() {
 
   async function handleSaveActuals(){
     setSaving(true);
-    await setDoc(doc(db,"actuals","results"),actuals);
+    await setDoc(doc(db,"actuals","results"),actuals,{merge:true});
     setSaveMsg("✓ Results saved!");setTimeout(()=>setSaveMsg(""),2500);setSaving(false);
   }
 
@@ -729,7 +788,7 @@ export default function App() {
               {KNOCKOUT_SLOTS.filter(m=>m.stage===activeStage).length===0?(
                 <div style={{textAlign:"center",color:T.muted,padding:30}}>Aún no hay partidos definidos para esta etapa.</div>
               ):KNOCKOUT_SLOTS.filter(m=>m.stage===activeStage).map(m=>(
-                <MatchCard key={m.id} match={m} pred={predictions[m.id]} actual={actuals[m.id]}
+                <MatchCard key={m.id} match={resolveMatchTeams(m,actuals)} pred={predictions[m.id]} actual={actuals[m.id]}
                   onChange={val=>setPredictions(p=>({...p,[m.id]:{...p[m.id],...val}}))} adminMode={false}/>
               ))}
             </>
@@ -810,7 +869,8 @@ export default function App() {
                 </div>
               )}
 
-              {allMatches.map(m=>{
+              {allMatches.map(m0=>{
+              const m = resolveMatchTeams(m0, actuals);
               const actual = actuals[m.id];
               const hasActual = actual&&actual.h!==""&&actual.a!=="";
               const locked = isLocked(m);
@@ -1033,7 +1093,9 @@ export default function App() {
 
           {["qf","sf","3rd","final"].includes(adminStage)&&(
             <>
-              {KNOCKOUT_SLOTS.filter(m=>m.stage===adminStage).map(m=>(
+              {KNOCKOUT_SLOTS.filter(m=>m.stage===adminStage).map(m0=>{
+                const m = resolveMatchTeams(m0, actuals);
+                return (
                 <div key={m.id} style={{background:T.bgCard,border:`1px solid ${T.border}`,borderRadius:12,padding:"12px 16px",marginBottom:8}}>
                   <div style={{color:T.muted,fontSize:10,marginBottom:6}}>{m.date}</div>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
@@ -1048,7 +1110,8 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </>
           )}
 
