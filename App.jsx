@@ -138,7 +138,7 @@ const KNOCKOUT_SLOTS = [
 
 const ALL_MATCHES = [...GROUP_MATCHES, ...KNOCKOUT_SLOTS];
 
-const BLOCKED_UIDS = ["FXxzxIOi98YIVmXfhWhuNKwg6cn2","IZ0zJImSUAUU7YCbCXp8k5UVOLs1"];
+const BLOCKED_UIDS = ["FXxzxIOi98YIVmXfhWhuNKwg6cn2","IZ0zJImSUAUU7YCbCXp8k5UVOLs1","iNDIXy6s02gTfOqc2coLSHU4duQ2"];
 
 function isLocked(match) {
   const now = new Date();
